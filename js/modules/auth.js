@@ -1,0 +1,78 @@
+import { auth } from '../firebase-config.js';
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { updateNavbarUser } from './ui.js';
+import { initInventory } from './inventory.js';
+import { initSalesView } from './sales.js';
+import { getUserRole, initUsersView } from './users.js';
+import { initDashboardView } from './dashboard.js';
+
+export function setupAuth() {
+    const loginForm = document.getElementById('login-form');
+    const btnLogout = document.getElementById('btn-logout');
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = loginForm.querySelector('button[type="submit"]');
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Ingresando...';
+                await signInWithEmailAndPassword(auth, email, password);
+                // Redirect is handled by onAuthStateChanged
+            } catch (error) {
+                Swal.fire('Error', 'Error: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = 'Ingresar';
+            }
+        });
+    }
+
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            await signOut(auth);
+        });
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+        const path = window.location.pathname;
+        const isLoginPage = path.endsWith('index.html') || path.endsWith('/');
+        const isUsersPage = path.endsWith('users.html');
+        const isDashboardPage = path.endsWith('dashboard.html');
+
+        if (user) {
+            // Determine Role
+            const role = await getUserRole(user.email);
+            
+            if (isLoginPage) {
+                if (role === 'Admin') {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = 'inventory.html';
+                }
+            } else {
+                // RBAC Protection
+                if ((isUsersPage || isDashboardPage) && role !== 'Admin') {
+                    Swal.fire('Acceso denegado', 'Se requiere rol de Administrador para ver esta página.', 'error').then(() => {
+                        window.location.href = 'inventory.html';
+                    });
+                    return;
+                }
+
+                updateNavbarUser(user.email, role);
+
+                // Initialize Views
+                initInventory();
+                initSalesView();
+                initUsersView();
+                initDashboardView();
+            }
+        } else {
+            if (!isLoginPage) {
+                window.location.href = 'index.html';
+            }
+        }
+    });
+}
