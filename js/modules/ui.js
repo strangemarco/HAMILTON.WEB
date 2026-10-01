@@ -35,9 +35,49 @@ export function updateNavbarUser(username, role) {
 // Sidebar Toggle
 const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
 const sidebar = document.getElementById('sidebar');
+
+let mobileOverlay = null;
+
 if (btnToggleSidebar && sidebar) {
     btnToggleSidebar.addEventListener('click', () => {
         sidebar.classList.toggle('sidebar-collapsed');
+        
+        // Handle mobile overlay
+        if (window.innerWidth <= 768) {
+            if (sidebar.classList.contains('sidebar-collapsed')) {
+                // Open overlay
+                if (!mobileOverlay) {
+                    mobileOverlay = document.createElement('div');
+                    mobileOverlay.style.position = 'fixed';
+                    mobileOverlay.style.top = '0';
+                    mobileOverlay.style.left = '0';
+                    mobileOverlay.style.width = '100vw';
+                    mobileOverlay.style.height = '100vh';
+                    mobileOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                    mobileOverlay.style.zIndex = '1040';
+                    mobileOverlay.style.transition = 'opacity 0.3s ease';
+                    document.body.appendChild(mobileOverlay);
+                    
+                    mobileOverlay.addEventListener('click', () => {
+                        sidebar.classList.remove('sidebar-collapsed');
+                        mobileOverlay.style.opacity = '0';
+                        setTimeout(() => {
+                            if(mobileOverlay) mobileOverlay.remove();
+                            mobileOverlay = null;
+                        }, 300);
+                    });
+                }
+            } else {
+                // Close overlay
+                if (mobileOverlay) {
+                    mobileOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        if(mobileOverlay) mobileOverlay.remove();
+                        mobileOverlay = null;
+                    }, 300);
+                }
+            }
+        }
     });
 }
 

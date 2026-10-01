@@ -1,5 +1,6 @@
 import { db } from '../firebase-config.js';
 import { collection, addDoc, doc, updateDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+import { logAction } from './logger.js';
 
 
 const saleProductInput = document.getElementById('sale-product-input');
@@ -19,8 +20,10 @@ const payQrRadio = document.getElementById('pay-qr');
 const cashPaymentSection = document.getElementById('cash-payment-section');
 const saleAmountPaid = document.getElementById('sale-amount-paid');
 const saleChange = document.getElementById('sale-change');
+const saleIdInput = document.getElementById('sale-id');
 
 let currentCart = [];
+let editingOldSale = null;
 let availableProducts = []; // Store products to look them up by input value
 let currentSales = [];
 let salesCurrentPage = 1;
@@ -183,9 +186,14 @@ function setupSales() {
                 }
             }
             
+            const loggedUser = JSON.parse(localStorage.getItem('hamilton_user') || '{}');
+            const fullName = `${loggedUser.nombre || ''} ${loggedUser.apellido || ''}`.trim();
+            const sellerName = fullName || loggedUser.email || 'Vendedor Default';
+
             // 1. Create Sale Document
             const sale = {
                 client: saleClient.value || "Público en general",
+                seller: sellerName,
                 date: new Date().toISOString(),
                 total: total,
                 paymentMethod: paymentMethod,
@@ -200,13 +208,53 @@ function setupSales() {
                 }))
             };
 
-            await addDoc(collection(db, "sales"), sale);
+            if (saleIdInput.value) {
+                // We are editing an existing sale
+                // 1. Revert old stock
+                if (editingOldSale) {
+                    for (const oldItem of editingOldSale.items) {
+                        // find the product currently in DB to restore stock
+                        const prodRef = doc(db, "products", oldItem.productId);
+                        // We do a fresh fetch to safely restore stock
+                        // But for simplicity, we assume the availableProducts has close enough data
+                        // or we fetch it
+                        const pDoc = await getDocs(query(collection(db, "products")));
+                        let currentDbStock = 0;
+                        pDoc.forEach(d => {
+                            if(d.id === oldItem.productId) currentDbStock = d.data().stock;
+                        });
+                        await updateDoc(prodRef, { stock: currentDbStock + oldItem.qty });
+                    }
+                }
+                
+                // 2. Deduct new stock
+                for (const item of currentCart) {
+                    const prodRef = doc(db, "products", item.product.id);
+                    const pDoc = await getDocs(query(collection(db, "products")));
+                    let currentDbStock = 0;
+                    pDoc.forEach(d => {
+                        if(d.id === item.product.id) currentDbStock = d.data().stock;
+                    });
+                    const newStock = currentDbStock - item.qty;
+                    await updateDoc(prodRef, { stock: newStock });
+                }
 
-            // 2. Deduct Stock from Products
-            for (const item of currentCart) {
-                const prodRef = doc(db, "products", item.product.id);
-                const newStock = item.product.stock - item.qty;
-                await updateDoc(prodRef, { stock: newStock });
+                // 3. Update Sale Doc
+                sale.date = editingOldSale.date; // Keep original date or update it? Keep original.
+                const saleRef = doc(db, "sales", saleIdInput.value);
+                await updateDoc(saleRef, sale);
+                await logAction("Editar Venta", "Ventas", `Editó la venta del cliente ${sale.client} con ID ${saleIdInput.value}`);
+            } else {
+                // New sale
+                const docRef = await addDoc(collection(db, "sales"), sale);
+                await logAction("Registrar Venta", "Ventas", `Registró una nueva venta por Bs${sale.total.toFixed(2)} para ${sale.client}`);
+
+                // 2. Deduct Stock from Products
+                for (const item of currentCart) {
+                    const prodRef = doc(db, "products", item.product.id);
+                    const newStock = item.product.stock - item.qty;
+                    await updateDoc(prodRef, { stock: newStock });
+                }
             }
 
             // Success
@@ -216,6 +264,8 @@ function setupSales() {
             
             // Reset Cart
             currentCart = [];
+            editingOldSale = null;
+            saleIdInput.value = '';
             saleClient.value = '';
             saleAmountPaid.value = '';
             saleChange.textContent = '0.00';
@@ -226,7 +276,10 @@ function setupSales() {
             // Refresh tables
             await initSalesView(); // Reload sales view to update product stock and list
             
-            Swal.fire('¡Venta Exitosa!', 'Venta registrada con éxito.', 'success');
+            Swal.fire('¡Venta Exitosa!', 'Venta registrada con éxito.', 'success').then(() => {
+                // Auto-print after closing the success modal
+                printSale(sale);
+            });
 
         } catch (e) {
             console.error(e);
@@ -246,9 +299,11 @@ function setupSales() {
         }
     });
 
-    // Handle Print Sale (Event delegation)
+    // Handle Print & Edit Sale (Event delegation)
     salesTableBody.addEventListener('click', (e) => {
         const btnPrint = e.target.closest('.btn-print-sale');
+        const btnEdit = e.target.closest('.btn-edit-sale');
+        
         if (btnPrint) {
             try {
                 const saleData = JSON.parse(decodeURIComponent(btnPrint.dataset.sale));
@@ -257,21 +312,76 @@ function setupSales() {
                 console.error("Error parsing sale data", err);
             }
         }
+        
+        if (btnEdit) {
+            try {
+                const saleData = JSON.parse(decodeURIComponent(btnEdit.dataset.sale));
+                
+                // Populate Modal for Editing
+                saleIdInput.value = saleData.id;
+                editingOldSale = saleData;
+                
+                saleClient.value = saleData.client || '';
+                
+                if (saleData.paymentMethod === 'QR') {
+                    payQrRadio.checked = true;
+                    cashPaymentSection.classList.add('d-none');
+                    saleAmountPaid.value = '';
+                    saleChange.textContent = '0.00';
+                } else {
+                    payCashRadio.checked = true;
+                    cashPaymentSection.classList.remove('d-none');
+                    saleAmountPaid.value = saleData.amountPaid || saleData.total;
+                    saleChange.textContent = (saleData.change || 0).toFixed(2);
+                }
+                
+                // Reconstruct cart
+                currentCart = saleData.items.map(i => ({
+                    product: { id: i.productId, codigo: i.codigo, descripcion: i.descripcion, stock: 999 }, // mock stock to allow edit without fresh fetch here
+                    qty: i.qty,
+                    price: i.price
+                }));
+                
+                updateCartUI();
+                
+                const modal = new bootstrap.Modal(document.getElementById('saleModal'));
+                modal.show();
+                
+            } catch(err) {
+                console.error("Error parsing sale data for edit", err);
+            }
+        }
+    });
+    
+    // Clear saleId when opening New Sale modal
+    document.querySelector('[data-bs-target="#saleModal"]').addEventListener('click', () => {
+        saleIdInput.value = '';
+        editingOldSale = null;
+        currentCart = [];
+        saleClient.value = '';
+        saleAmountPaid.value = '';
+        saleChange.textContent = '0.00';
+        payCashRadio.checked = true;
+        cashPaymentSection.classList.remove('d-none');
+        updateCartUI();
     });
 }
 
 function printSale(sale) {
     const dateObj = new Date(sale.date);
-    const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
+    const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
     let itemsHtml = '';
     sale.items.forEach(item => {
         itemsHtml += `
             <tr>
-                <td style="border-bottom: 1px solid #ddd; padding: 8px;">${item.qty}</td>
-                <td style="border-bottom: 1px solid #ddd; padding: 8px;">${item.descripcion} (${item.codigo})</td>
-                <td style="border-bottom: 1px solid #ddd; padding: 8px;">Bs${item.price.toFixed(2)}</td>
-                <td style="border-bottom: 1px solid #ddd; padding: 8px;">Bs${(item.qty * item.price).toFixed(2)}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #333;">${item.qty}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #333;">
+                    <div style="font-weight: 600;">${item.descripcion}</div>
+                    <div style="font-size: 0.85em; color: #555;">Cód: ${item.codigo}</div>
+                </td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #333; text-align: right;">Bs${item.price.toFixed(2)}</td>
+                <td style="padding: 10px 0; border-bottom: 1px solid #333; text-align: right;">Bs${(item.qty * item.price).toFixed(2)}</td>
             </tr>
         `;
     });
@@ -280,59 +390,199 @@ function printSale(sale) {
     printWindow.document.write(`
         <html>
         <head>
-            <title>Nota de Venta</title>
+            <title>Nota de Venta - Repuestos Hamilton</title>
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-                .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
-                .header-info { text-align: right; }
-                .header-info h2 { margin: 0; color: #dc3545; font-size: 28px; letter-spacing: 1px; }
-                .header-info p { margin: 5px 0 0 0; font-size: 16px; color: #666; text-transform: uppercase; letter-spacing: 2px; }
-                .logo-placeholder { width: 120px; height: 80px; background-color: #f8f9fa; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #aaa; font-weight: bold; border-radius: 8px; }
-                .details { margin-bottom: 30px; font-size: 15px; }
-                .details strong { min-width: 130px; display: inline-block; color: #555; }
-                .details div { margin-bottom: 8px; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                th { text-align: left; background: #f8f9fa; padding: 12px 15px; border-bottom: 2px solid #dee2e6; color: #495057; font-weight: 600; text-transform: uppercase; font-size: 13px; }
-                td { padding: 12px 15px; border-bottom: 1px solid #eee; }
-                .total-container { display: flex; justify-content: flex-end; }
-                .total { text-align: right; font-size: 1.3em; font-weight: bold; padding: 15px 20px; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #eee; }
-                .total span { color: #dc3545; margin-left: 10px; }
+                body { 
+                    font-family: 'Inter', 'Segoe UI', sans-serif; 
+                    padding: 40px; 
+                    color: #000; 
+                    line-height: 1.5;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+                .header { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: flex-end;
+                    border-bottom: 4px solid #000;
+                    padding-bottom: 15px;
+                    margin-bottom: 30px;
+                }
+                .logo-area h1 { 
+                    margin: 0; 
+                    font-size: 32px; 
+                    font-weight: 800; 
+                    letter-spacing: -1px;
+                    text-transform: uppercase;
+                }
+                .logo-area p {
+                    margin: 0;
+                    color: #dc3545;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
+                    font-size: 14px;
+                }
+                .receipt-title {
+                    text-align: right;
+                }
+                .receipt-title h2 {
+                    margin: 0;
+                    font-size: 24px;
+                    text-transform: uppercase;
+                    font-weight: 700;
+                }
+                .receipt-title p {
+                    margin: 0;
+                    font-size: 14px;
+                    color: #555;
+                }
+                .details-list {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 15px 30px;
+                    margin-bottom: 40px;
+                    font-size: 14px;
+                    line-height: 1.4;
+                    background-color: #f8f9fa;
+                    padding: 20px;
+                    border-radius: 4px;
+                }
+                .details-list > div {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .details-list strong {
+                    color: #6c757d;
+                    font-size: 11px;
+                    letter-spacing: 1px;
+                    text-transform: uppercase;
+                    margin-bottom: 4px;
+                }
+                .detail-value {
+                    font-weight: 700;
+                    font-size: 15px;
+                }
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-bottom: 30px; 
+                }
+                th { 
+                    text-align: left; 
+                    padding: 10px 0; 
+                    border-bottom: 2px solid #000; 
+                    font-weight: 700; 
+                    text-transform: uppercase; 
+                    font-size: 12px; 
+                    letter-spacing: 1px;
+                }
+                th.text-right { text-align: right; }
+                .totals-area {
+                    display: flex;
+                    justify-content: flex-end;
+                    margin-top: 20px;
+                }
+                .totals-box {
+                    width: 350px;
+                    background-color: #f8f9fa;
+                    padding: 20px;
+                    border-radius: 4px;
+                }
+                .total-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                    font-size: 14px;
+                }
+                .total-row.grand-total {
+                    font-size: 20px;
+                    font-weight: 800;
+                    border-top: 2px solid #000;
+                    padding-top: 10px;
+                    margin-top: 10px;
+                    margin-bottom: 0;
+                    color: #dc3545;
+                }
+                .footer {
+                    margin-top: 50px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #555;
+                    border-top: 1px solid #eee;
+                    padding-top: 20px;
+                }
+                @media print {
+                    body { padding: 0; }
+                }
             </style>
         </head>
         <body>
             <div class="header">
-                <div class="logo-placeholder">LOGO AQUI</div>
-                <div class="header-info">
-                    <h2>Repuestos Hamilton</h2>
-                    <p>Nota de Venta</p>
+                <div class="logo-area">
+                    <h1>Hamilton</h1>
+                    <p>Repuestos & Accesorios</p>
+                </div>
+                <div class="receipt-title">
+                    <h2>Nota de Venta</h2>
+                    <p>Copia Cliente</p>
                 </div>
             </div>
-            <div class="details">
-                <div><strong>Fecha:</strong> ${dateStr}</div>
-                <div><strong>Cliente:</strong> ${sale.client}</div>
-                <div><strong>Método de Pago:</strong> ${sale.paymentMethod || 'Efectivo'}</div>
-                ${(sale.paymentMethod || 'Efectivo') === 'Efectivo' && sale.amountPaid ? `<div><strong>Monto Pagado:</strong> Bs${sale.amountPaid.toFixed(2)}</div><div><strong>Cambio:</strong> Bs${sale.change.toFixed(2)}</div>` : ''}
+            
+            <div class="details-list">
+                <div><strong>CLIENTE:</strong> <span class="detail-value">${sale.client}</span></div>
+                <div><strong>FECHA Y HORA:</strong> <span class="detail-value">${dateStr}</span></div>
+                <div><strong>VENDEDOR:</strong> <span class="detail-value">${sale.seller || 'No especificado'}</span></div>
             </div>
+
             <table>
                 <thead>
                     <tr>
-                        <th>Cant.</th>
-                        <th>Descripción</th>
-                        <th>P. Unitario</th>
-                        <th>Subtotal</th>
+                        <th width="10%">Cant.</th>
+                        <th width="50%">Descripción del Producto</th>
+                        <th width="20%" class="text-right">P. Unitario</th>
+                        <th width="20%" class="text-right">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${itemsHtml}
                 </tbody>
             </table>
-            <div class="total-container">
-                <div class="total">
-                    Total: <span>Bs${sale.total.toFixed(2)}</span>
+            
+            <div class="totals-area">
+                <div class="totals-box">
+                    <div class="total-row">
+                        <span>Método de Pago:</span>
+                        <strong>${sale.paymentMethod || 'Efectivo'}</strong>
+                    </div>
+                    ${(sale.paymentMethod || 'Efectivo') === 'Efectivo' && sale.amountPaid ? `
+                    <div class="total-row">
+                        <span>Efectivo Recibido:</span>
+                        <span>Bs${sale.amountPaid.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Cambio:</span>
+                        <span>Bs${sale.change.toFixed(2)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="total-row grand-total">
+                        <span>TOTAL</span>
+                        <span>Bs${sale.total.toFixed(2)}</span>
+                    </div>
                 </div>
             </div>
+
+            <div class="footer">
+                <p>GRACIAS POR SU COMPRA</p>
+                <p>Para reclamos o devoluciones es indispensable presentar este recibo.</p>
+            </div>
+
             <script>
-                window.onload = () => { window.print(); window.close(); }
+                // Add a small delay to ensure fonts/styles load before print dialog
+                setTimeout(() => {
+                    window.print();
+                    window.close();
+                }, 500);
             </script>
         </body>
         </html>
@@ -434,7 +684,8 @@ function renderSalesPage(page) {
             <td class="fw-bold text-success">Bs${sale.total.toFixed(2)}</td>
             <td>${totalItems} unids.</td>
             <td>
-                <button class="btn btn-sm btn-outline-info btn-print-sale" data-sale="${encodeURIComponent(JSON.stringify(sale))}" title="Imprimir Nota"><i class="bi bi-printer"></i></button>
+                <button class="btn btn-sm btn-outline-info btn-print-sale rounded-0" data-sale="${encodeURIComponent(JSON.stringify({...sale, id: sale.id}))}" title="Imprimir Nota"><i class="bi bi-printer"></i></button>
+                <button class="btn btn-sm btn-outline-primary btn-edit-sale rounded-0 ms-1" data-sale="${encodeURIComponent(JSON.stringify({...sale, id: sale.id}))}" title="Editar Venta"><i class="bi bi-pencil"></i></button>
             </td>
         `;
         salesTableBody.appendChild(tr);

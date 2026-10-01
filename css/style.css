@@ -16,15 +16,53 @@ body {
 /* Sidebar */
 #sidebar {
     transition: margin-left 0.3s ease;
+    background-color: #0f1113 !important;
+    border-right: 1px solid #2a2e33;
 }
 .sidebar-collapsed {
     margin-left: -260px !important;
 }
 
-/* Sidebar Active Item */
+/* Sidebar Navigation Items */
+.nav-pills .nav-link {
+    border-radius: 0 !important;
+    color: #8e959b !important;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+.nav-pills .nav-link:hover {
+    background-color: rgba(220, 53, 69, 0.05) !important;
+    color: #fff !important;
+}
 .nav-pills .nav-link.active {
-    background-color: #dc3545 !important; 
+    background-color: transparent !important; 
     color: white !important;
+    border-left: 4px solid #dc3545;
+    background: linear-gradient(90deg, rgba(220,53,69,0.15) 0%, transparent 100%) !important;
+}
+
+/* Sidebar Badges and Buttons */
+#sidebar .badge {
+    border-radius: 0 !important;
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+#btn-logout {
+    border-radius: 0 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-color: #333 !important;
+    color: #aaa !important;
+}
+#btn-logout:hover {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: #fff !important;
 }
 
 /* Overriding Bootstrap Primary classes to Red */
@@ -109,4 +147,349 @@ body {
 
 .shadow-lg {
     box-shadow: 0 10px 30px rgba(9, 30, 66, 0.15) !important;
+}
+
+/* SweetAlert2 Industrial Overrides */
+.swal2-popup {
+    border-radius: 0 !important;
+    border: 2px solid #212529 !important;
+    box-shadow: 8px 8px 0px rgba(0,0,0,0.1) !important;
+    font-family: 'Inter', 'Segoe UI', sans-serif !important;
+}
+
+[data-bs-theme="dark"] .swal2-popup {
+    background-color: #1a1d20 !important;
+    color: #f8f9fa !important;
+    border-color: #dc3545 !important;
+    box-shadow: 8px 8px 0px rgba(220,53,69,0.15) !important;
+}
+
+[data-bs-theme="dark"] .swal2-title, [data-bs-theme="dark"] .swal2-html-container {
+    color: #f8f9fa !important;
+}
+
+.swal2-confirm, .swal2-cancel, .swal2-deny {
+    border-radius: 0 !important;
+    text-transform: uppercase !important;
+    font-weight: 700 !important;
+    letter-spacing: 1px !important;
+    box-shadow: none !important;
+}
+
+.swal2-input, .swal2-textarea {
+    border-radius: 0 !important;
+    border: 1px solid #ced4da !important;
+}
+[data-bs-theme="dark"] .swal2-input, [data-bs-theme="dark"] .swal2-textarea {
+    background-color: #2b3035 !important;
+    color: #f8f9fa !important;
+    border-color: #495057 !important;
+}
+[data-bs-theme="dark"] .swal2-input:focus, [data-bs-theme="dark"] .swal2-textarea:focus {
+    border-color: #dc3545 !important;
+    box-shadow: none !important;
+}
+
+/* Auth Loading State to prevent Flash of Unstyled Content (FOUC) */
+body.loading-auth {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+body:not(.loading-auth) {
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Role Based Access Control (RBAC) frontend hiding */
+body.role-cajero .admin-only {
+    display: none !important;
+}
+
+/* Dashboard Industrial Override */
+.kpi-panel {
+    background-color: var(--bs-tertiary-bg);
+    border-top: 3px solid #333;
+    padding: 1.5rem;
+    border-radius: 0;
+    margin-bottom: 1rem;
+    transition: transform 0.2s, border-color 0.2s;
+}
+.kpi-panel:hover {
+    transform: translateY(-2px);
+    border-top-color: #dc3545; /* Brand red */
+}
+.kpi-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.5rem;
+}
+.kpi-value {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--bs-body-color);
+    line-height: 1;
+}
+
+.filter-bar {
+    background-color: transparent;
+    border-bottom: 2px solid #333;
+    padding-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+.filter-bar .form-control, .filter-bar .form-select {
+    border-radius: 0;
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+}
+.filter-bar label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+
+/* ==============================================================
+   Modals & Tables (Inventory, Sales, Users)
+   ============================================================== */
+.custom-panel {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0;
+    background-color: var(--bs-tertiary-bg);
+    padding: 1.5rem;
+}
+.table-custom {
+    margin-bottom: 0;
+}
+.table-custom th {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--bs-border-color);
+}
+
+/* Modal Industrial Override */
+.modal-content {
+    border-radius: 0;
+    border: 1px solid #333;
+    background-color: var(--bs-body-bg);
+}
+.modal-header {
+    border-bottom: 2px solid #333;
+    padding: 1.5rem 2rem;
+}
+.modal-title {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 1.1rem;
+}
+.modal-body {
+    padding: 2rem;
+}
+.modal-footer {
+    border-top: 1px solid #333;
+    padding: 1.5rem 2rem;
+}
+.form-section-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #dc3545;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+.custom-modal-input {
+    border-radius: 0;
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+}
+.custom-modal-input:focus {
+    border-color: #dc3545;
+    box-shadow: none;
+}
+.custom-modal-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+}
+
+/* ==============================================================
+   Login Layout (index.html)
+   ============================================================== */
+:root {
+    --brand-red: #D92534;
+    --surface-dark: #0F1113;
+    --surface-input: #1A1D21;
+    --text-primary: #FFFFFF;
+    --text-muted: #8E959B;
+}
+
+body.login-page {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--surface-dark);
+    color: var(--text-primary);
+    margin: 0;
+    overflow: hidden;
+}
+
+.login-layout {
+    display: flex;
+    height: 100vh;
+}
+
+.form-section {
+    flex: 0 0 480px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 4rem;
+    background-color: var(--surface-dark);
+    z-index: 10;
+}
+
+.visual-section {
+    flex: 1;
+    background-image: url('../bg-login.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: relative;
+}
+
+/* Subtle gradient overlay to merge the image with the dark sidebar */
+.visual-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(to right, var(--surface-dark) 0%, transparent 100%);
+}
+
+.brand-headline {
+    font-weight: 700;
+    font-size: 2.5rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+}
+
+.brand-headline span {
+    color: var(--brand-red);
+}
+
+.brand-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 400;
+    margin-bottom: 4rem;
+}
+
+.custom-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.custom-input {
+    width: 100%;
+    background-color: var(--surface-input);
+    border: 1px solid #2A2E33;
+    color: var(--text-primary);
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 4px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.custom-input:focus {
+    outline: none;
+    border-color: var(--brand-red);
+    box-shadow: 0 0 0 1px var(--brand-red);
+}
+
+.custom-input::placeholder {
+    color: #4A4F55;
+}
+
+.form-group {
+    margin-bottom: 1.75rem;
+}
+
+.btn-submit {
+    width: 100%;
+    background-color: var(--brand-red);
+    color: #fff;
+    border: none;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 1rem;
+}
+
+.btn-submit:hover {
+    background-color: #BD1C29;
+}
+
+.btn-submit:active {
+    background-color: #9C1420;
+}
+
+@media (max-width: 900px) {
+    .form-section {
+        flex: 1;
+        padding: 2rem;
+    }
+    .visual-section {
+        display: none;
+    }
+}
+
+/* RESPONSIVE DESIGN - MOBILE FIRST TWEAKS */
+@media (max-width: 768px) {
+    /* Sidebar */
+    #sidebar {
+        position: fixed !important;
+        height: 100vh;
+        z-index: 1050;
+        margin-left: -260px !important;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+    }
+    
+    /* On mobile, toggling adds the class to show it */
+    #sidebar.sidebar-collapsed {
+        margin-left: 0 !important;
+    }
+
+    /* Main Content Area */
+    .flex-grow-1 {
+        width: 100% !important;
+    }
+
+    /* Topbar styling for mobile */
+    .p-3.bg-body {
+        padding: 0.75rem 1rem !important;
+    }
+
+    /* Modals padding */
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    /* Typography adjustments */
+    .display-6 {
+        font-size: 1.5rem !important;
+    }
 }

@@ -8,8 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+
 </head>
-<body>
+<body class="loading-auth">
     <div class="d-flex" style="min-height: 100vh;">
         <!-- Sidebar -->
         <div class="bg-dark text-white p-3 d-flex flex-column" id="sidebar" style="width: 260px;">
@@ -29,7 +30,7 @@
                 </li>
                 
                 <li class="nav-item mt-3 mb-1">
-                    <small class="text-uppercase text-secondary fw-bold ms-3" style="font-size: 0.7rem; letter-spacing: 1px;">Gestión</small>
+                    <small class="text-uppercase text-secondary fw-bold ms-3" style="font-size: 0.7rem; letter-spacing: 1px;">GestiÃ³n</small>
                 </li>
                 <li class="nav-item">
                     <a href="inventory.html" class="nav-link text-white" id="nav-inventory">
@@ -41,13 +42,23 @@
                         <i class="bi bi-receipt me-2"></i> Notas de Venta
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a href="caja.html" class="nav-link text-white" id="nav-caja">
+                        <i class="bi bi-cash-stack me-2"></i> Cierre de Caja
+                    </a>
+                </li>
                 
-                <li class="nav-item mt-3 mb-1 d-none" id="nav-header-admin">
+                <li class="nav-item mt-3 mb-1 admin-only" id="nav-header-admin">
                     <small class="text-uppercase text-secondary fw-bold ms-3" style="font-size: 0.7rem; letter-spacing: 1px;">Sistema</small>
                 </li>
-                <li class="nav-item d-none" id="nav-item-users">
+                <li class="nav-item admin-only" id="nav-item-users">
                     <a href="users.html" class="nav-link text-white" id="nav-users">
                         <i class="bi bi-people me-2"></i> Usuarios
+                    </a>
+                </li>
+                <li class="nav-item admin-only">
+                    <a href="logs.html" class="nav-link text-white" id="nav-logs">
+                        <i class="bi bi-journal-text me-2"></i> Historial de Mov.
                     </a>
                 </li>
             </ul>
@@ -63,6 +74,9 @@
                 <button class="btn btn-outline-light btn-sm w-100" id="btn-logout">
                     <i class="bi bi-box-arrow-right me-1"></i> Cerrar Sesión
                 </button>
+                <div class="mt-4 text-center" style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">
+                    Desarrollado por {Dev Marco}
+                </div>
             </div>
         </div>
 
@@ -89,18 +103,17 @@
                     <p class="display-6 fw-bold text-primary mb-0" style="font-size: 1.8rem;">Notas de Venta</p>
                 </div>
                 <div class="col-md-6 text-end">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saleModal">
+                    <button class="btn btn-outline-primary rounded-0" data-bs-toggle="modal" data-bs-target="#saleModal">
                         <i class="bi bi-cart-plus me-1"></i> Nueva Venta
                     </button>
                 </div>
             </div>
             
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table">
-                            <thead>
-                                <tr>
+            <div class="custom-panel">
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
                                     <th>Fecha</th>
                                     <th>Cliente</th>
                                     <th>Total</th>
@@ -137,33 +150,38 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Nombre del Cliente (Opcional)</label>
-                        <input type="text" class="form-control" id="sale-client" placeholder="Público en general">
+                    <input type="hidden" id="sale-id">
+                    <div class="mb-4">
+                        <div class="form-section-title">Datos del Cliente</div>
+                        <label class="form-label custom-modal-label">Nombre del Cliente (Opcional)</label>
+                        <input type="text" class="form-control custom-modal-input" id="sale-client" placeholder="PÃºblico en general">
                     </div>
                     
-                    <div class="row g-2 mb-3 align-items-end">
-                        <div class="col-md-6">
-                            <label class="form-label">Buscar Producto (Cód. o Nombre)</label>
-                            <input class="form-control" list="sale-product-datalist" id="sale-product-input" placeholder="Escribe para buscar...">
-                            <datalist id="sale-product-datalist">
-                            </datalist>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Cant.</label>
-                            <input type="number" class="form-control" id="sale-qty" value="1" min="1">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Precio</label>
-                            <input type="number" step="0.01" class="form-control" id="sale-custom-price">
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-success w-100" id="btn-add-to-cart">Añadir</button>
+                    <div class="mb-4">
+                        <div class="form-section-title">AÃ±adir Productos</div>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label custom-modal-label">Buscar Producto (CÃ³d. o Nombre)</label>
+                                <input class="form-control custom-modal-input" list="sale-product-datalist" id="sale-product-input" placeholder="Escribe para buscar...">
+                                <datalist id="sale-product-datalist">
+                                </datalist>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label custom-modal-label">Cant.</label>
+                                <input type="number" class="form-control custom-modal-input" id="sale-qty" value="1" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label custom-modal-label">Precio</label>
+                                <input type="number" step="0.01" class="form-control custom-modal-input" id="sale-custom-price">
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-outline-success rounded-0 w-100" id="btn-add-to-cart">AÃ±adir</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="table">
+                    <div class="table-responsive mb-4">
+                        <table class="table table-custom">
                             <thead class="table-light">
                                 <tr>
                                     <th>Producto</th>
@@ -178,37 +196,39 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="d-flex gap-3 align-items-center">
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="paymentMethod" id="pay-cash" value="Efectivo" checked>
-                                <label class="form-check-label" for="pay-cash">Efectivo</label>
+
+                    <div class="form-section-title">LiquidaciÃ³n</div>
+                    <div class="d-flex justify-content-between align-items-center mt-3 p-3" style="background-color: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color);">
+                        <div class="d-flex gap-4 align-items-center">
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input rounded-0" type="radio" name="paymentMethod" id="pay-cash" value="Efectivo" checked>
+                                <label class="form-check-label custom-modal-label ms-1 mt-1" for="pay-cash">Efectivo</label>
                             </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="radio" name="paymentMethod" id="pay-qr" value="QR">
-                                <label class="form-check-label" for="pay-qr">QR</label>
+                            <div class="form-check form-check-inline m-0">
+                                <input class="form-check-input rounded-0" type="radio" name="paymentMethod" id="pay-qr" value="QR">
+                                <label class="form-check-label custom-modal-label ms-1 mt-1" for="pay-qr">QR</label>
                             </div>
                         </div>
-                        <div class="text-end fw-bold fs-5">
-                            Total: Bs<span id="sale-total">0.00</span>
+                        <div class="text-end fw-bold" style="font-size: 1.5rem; color: #dc3545;">
+                            TOTAL: Bs<span id="sale-total">0.00</span>
                         </div>
                     </div>
                     
-                    <div class="row g-2 mt-2 align-items-center justify-content-end" id="cash-payment-section">
+                    <div class="row g-2 mt-3 align-items-center justify-content-end" id="cash-payment-section">
                         <div class="col-auto">
-                            <label class="col-form-label text-muted">Monto Pagado (Bs):</label>
+                            <label class="col-form-label custom-modal-label">Monto Pagado (Bs):</label>
                         </div>
                         <div class="col-3">
-                            <input type="number" step="0.01" class="form-control" id="sale-amount-paid" placeholder="0.00">
+                            <input type="number" step="0.01" class="form-control custom-modal-input text-end" id="sale-amount-paid" placeholder="0.00">
                         </div>
-                        <div class="col-auto ms-3">
-                            <span class="text-muted">Cambio: </span><span class="fw-bold text-success fs-5">Bs<span id="sale-change">0.00</span></span>
+                        <div class="col-auto ms-4 text-end">
+                            <span class="custom-modal-label">Cambio: </span><span class="fw-bold fs-5 text-success ms-2">Bs<span id="sale-change">0.00</span></span>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="btn-confirm-sale">Confirmar Venta</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-0" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger rounded-0 px-4" id="btn-confirm-sale">Confirmar Venta</button>
                 </div>
             </div>
         </div>
@@ -220,3 +240,4 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+

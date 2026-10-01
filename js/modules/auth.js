@@ -5,6 +5,8 @@ import { initInventory } from './inventory.js';
 import { initSalesView } from './sales.js';
 import { getUserRole, initUsersView } from './users.js';
 import { initDashboardView } from './dashboard.js';
+import { initLogsView } from './logs.js';
+import { initCajaView } from './caja.js';
 
 export function setupAuth() {
     const loginForm = document.getElementById('login-form');
@@ -43,8 +45,19 @@ export function setupAuth() {
         const isDashboardPage = path.endsWith('dashboard.html');
 
         if (user) {
-            // Determine Role
+            // Determine Role and fetch full user data
+            const { getUserRole, getUserData } = await import('./users.js');
             const role = await getUserRole(user.email);
+            const userData = await getUserData(user.email) || {};
+            
+            // Save to local storage so it's available synchronously later (e.g. for receipts)
+            localStorage.setItem('hamilton_user', JSON.stringify({
+                email: user.email,
+                role: role,
+                nombre: userData.nombre || '',
+                apellido: userData.apellido || '',
+                ci: userData.ci || ''
+            }));
             
             if (isLoginPage) {
                 if (role === 'Admin') {
@@ -54,7 +67,7 @@ export function setupAuth() {
                 }
             } else {
                 // RBAC Protection
-                if ((isUsersPage || isDashboardPage) && role !== 'Admin') {
+                if ((isUsersPage || isDashboardPage || path.endsWith('logs.html')) && role !== 'Admin') {
                     Swal.fire('Acceso denegado', 'Se requiere rol de Administrador para ver esta página.', 'error').then(() => {
                         window.location.href = 'inventory.html';
                     });
@@ -62,16 +75,25 @@ export function setupAuth() {
                 }
 
                 updateNavbarUser(user.email, role);
+                document.body.classList.remove('role-admin', 'role-cajero');
+                document.body.classList.add(role === 'Admin' ? 'role-admin' : 'role-cajero');
 
                 // Initialize Views
                 initInventory();
                 initSalesView();
                 initUsersView();
                 initDashboardView();
+                initLogsView();
+                initCajaView();
+
+                // Show body now that auth is resolved
+                document.body.classList.remove('loading-auth');
             }
         } else {
             if (!isLoginPage) {
                 window.location.href = 'index.html';
+            } else {
+                document.body.classList.remove('loading-auth');
             }
         }
     });
