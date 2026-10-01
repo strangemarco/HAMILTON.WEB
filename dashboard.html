@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
@@ -101,21 +101,21 @@
         <!-- Filters Section -->
         <div class="filter-bar">
             <div class="row g-3 align-items-end">
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label mb-1">Fecha Inicio</label>
                     <input type="date" class="form-control form-control-sm" id="filter-date-start">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label mb-1">Fecha Fin</label>
                     <input type="date" class="form-control form-control-sm" id="filter-date-end">
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label mb-1">Marca</label>
                     <select class="form-select form-select-sm" id="filter-brand">
                         <option value="">Todas</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label mb-1">Estado de Stock</label>
                     <select class="form-select form-select-sm" id="filter-stock">
                         <option value="">Todos</option>
@@ -123,7 +123,7 @@
                         <option value="normal">Normal (> 5)</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-12 col-sm-6 col-lg-2">
                     <label class="form-label mb-1">Pago</label>
                     <select class="form-select form-select-sm" id="filter-payment">
                         <option value="">Todos</option>
@@ -131,36 +131,36 @@
                         <option value="QR">QR</option>
                     </select>
                 </div>
-                <div class="col-6 col-md-2 d-flex gap-2">
+                <div class="col-12 col-sm-6 col-lg-2 d-flex gap-2">
                     <button class="btn btn-outline-success btn-sm w-100 rounded-0" id="btn-export-excel"><i class="bi bi-file-excel"></i> Exportar</button>
                 </div>
             </div>
         </div>
 
         <!-- KPIs -->
-        <div class="row mb-5">
-            <div class="col-md-3">
+        <div class="row g-4 mb-5">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <div class="kpi-panel position-relative overflow-hidden">
                     <i class="bi bi-cash-coin position-absolute text-muted" style="font-size: 3rem; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.15;"></i>
                     <p class="kpi-title">Ingresos (Hoy)</p>
                     <p class="kpi-value text-success position-relative" id="kpi-ingresos-hoy">Bs0.00</p>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <div class="kpi-panel position-relative overflow-hidden">
                     <i class="bi bi-cart-check position-absolute text-muted" style="font-size: 3rem; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.15;"></i>
                     <p class="kpi-title">Ventas (Hoy)</p>
                     <p class="kpi-value position-relative" id="kpi-ventas-hoy">0</p>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <div class="kpi-panel position-relative overflow-hidden">
                     <i class="bi bi-box-seam position-absolute text-muted" style="font-size: 3rem; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.15;"></i>
                     <p class="kpi-title">Total Productos Vendidos</p>
                     <p class="kpi-value position-relative" id="kpi-productos-vendidos">0</p>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-12 col-sm-6 col-lg-3">
                 <div class="kpi-panel position-relative overflow-hidden">
                     <i class="bi bi-exclamation-triangle position-absolute text-danger" style="font-size: 3rem; right: 20px; top: 50%; transform: translateY(-50%); opacity: 0.15;"></i>
                     <p class="kpi-title text-danger">Bajo Stock (Alertas)</p>
@@ -231,4 +231,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
