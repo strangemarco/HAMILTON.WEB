@@ -104,3 +104,29 @@ if (themeToggle) {
         }
     });
 }
+
+// --- Table Responsive Cards Data-Labels Injector ---
+function applyTableDataLabels() {
+    document.querySelectorAll('table').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            Array.from(tr.querySelectorAll('td')).forEach((td, index) => {
+                if (headers[index] && !td.hasAttribute('data-label')) {
+                    td.setAttribute('data-label', headers[index]);
+                }
+            });
+        });
+    });
+}
+const observer = new MutationObserver((mutations) => {
+    let shouldUpdate = false;
+    for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+            shouldUpdate = true;
+            break;
+        }
+    }
+    if (shouldUpdate) applyTableDataLabels();
+});
+observer.observe(document.body, { childList: true, subtree: true });
+applyTableDataLabels();
