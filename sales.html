@@ -98,15 +98,8 @@
         </div>
 
         <div id="view-sales">
-            <div class="row mb-4 align-items-center">
-                <div class="col-md-6">
-                    <p class="display-6 fw-bold text-primary mb-0" style="font-size: 1.8rem;">Notas de Venta</p>
-                </div>
-                <div class="col-md-6 text-end">
-                    <button class="btn btn-outline-primary rounded-0" data-bs-toggle="modal" data-bs-target="#saleModal">
-                        <i class="bi bi-cart-plus me-1"></i> Nueva Venta
-                    </button>
-                </div>
+            <div class="mb-4">
+                <p class="display-6 fw-bold text-primary mb-0" style="font-size: 1.8rem;">Notas de Venta</p>
             </div>
             
             <div class="filter-bar mb-4">
@@ -119,9 +112,14 @@
                         <label class="form-label mb-1">Fecha Fin</label>
                         <input type="date" class="form-control form-control-sm h-100" id="sales-filter-end">
                     </div>
-                    <div class="col-12 col-md-4 col-lg-2">
-                        <button class="btn btn-outline-success btn-sm w-100 h-100 rounded-0" id="btn-export-sales">
+                    <div class="col-6 col-md-2 col-lg-2">
+                        <button class="btn btn-outline-success btn-sm w-100 rounded-0" id="btn-export-sales" style="height: 31px;">
                             <i class="bi bi-file-excel"></i> Exportar
+                        </button>
+                    </div>
+                    <div class="col-6 col-md-2 col-lg-2">
+                        <button class="btn btn-outline-primary btn-sm w-100 rounded-0" data-bs-toggle="modal" data-bs-target="#saleModal" style="height: 31px;">
+                            <i class="bi bi-cart-plus me-1"></i> Nueva Venta
                         </button>
                     </div>
                 </div>
