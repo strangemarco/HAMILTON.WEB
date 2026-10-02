@@ -1,4 +1,4 @@
-﻿import { db } from '../firebase-config.js';
+import { db } from '../firebase-config.js';
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 const usersTableBody = document.getElementById('users-table-body');
@@ -59,9 +59,19 @@ async function loadUsers() {
         const querySnapshot = await getDocs(collection(db, "roles"));
         usersTableBody.innerHTML = '';
         
+        const users = [];
         querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const id = docSnap.id;
+            users.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        users.sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return timeB - timeA;
+        });
+        
+        users.forEach((data) => {
+            const id = data.id;
             const tr = document.createElement('tr');
             
             const fullName = `${data.nombre || ''} ${data.apellido || ''}`.trim() || 'Sin Nombre';

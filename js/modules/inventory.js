@@ -1,4 +1,4 @@
-﻿import { db } from '../firebase-config.js';
+import { db } from '../firebase-config.js';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { showLoading, hideLoading } from './ui.js';
 import { logAction } from './logger.js';
@@ -27,6 +27,16 @@ export async function loadProducts() {
         const querySnapshot = await getDocs(collection(db, "products"));
         querySnapshot.forEach((doc) => {
             currentProducts.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Sort products by createdAt descending (newest first)
+        currentProducts.sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            // If they both have dates or one has a date, sort by date
+            if (timeA !== timeB) return timeB - timeA;
+            // Fallback to sorting by codigo descending so the highest numbers appear first
+            return (b.codigo || '').localeCompare(a.codigo || '');
         });
         populateInventoryFilters();
         applyInventoryFilters();
