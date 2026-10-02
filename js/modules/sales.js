@@ -1,4 +1,4 @@
-import { db } from '../firebase-config.js';
+﻿import { db } from '../firebase-config.js';
 import { collection, addDoc, doc, updateDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { logAction } from './logger.js';
 
@@ -26,6 +26,7 @@ let currentCart = [];
 let editingOldSale = null;
 let availableProducts = []; // Store products to look them up by input value
 let currentSales = [];
+let filteredSales = [];
 let salesCurrentPage = 1;
 const salesRowsPerPage = 10;
 
@@ -57,6 +58,12 @@ export async function initSalesView() {
 }
 
 function setupSales() {
+    const filterStart = document.getElementById('sales-filter-start');
+    const filterEnd = document.getElementById('sales-filter-end');
+    const btnExport = document.getElementById('btn-export-sales');
+    if (filterStart) filterStart.addEventListener('change', applySalesFilters);
+    if (filterEnd) filterEnd.addEventListener('change', applySalesFilters);
+    if (btnExport) btnExport.addEventListener('click', exportSalesToExcel);
     const paginationContainer = document.getElementById('sales-pagination');
     if (paginationContainer) {
         paginationContainer.addEventListener('click', (e) => {
@@ -276,7 +283,7 @@ function setupSales() {
             // Refresh tables
             await initSalesView(); // Reload sales view to update product stock and list
             
-            Swal.fire('¡Venta Exitosa!', 'Venta registrada con éxito.', 'success').then(() => {
+            Swal.fire('Â¡Venta Exitosa!', 'Venta registrada con éxito.', 'success').then(() => {
                 // Auto-print after closing the success modal
                 printSale(sale);
             });
@@ -647,7 +654,7 @@ async function loadSales() {
             currentSales.push(doc.data());
         });
         
-        renderSalesPage(1);
+        
     } catch (e) {
         console.error("Error loading sales:", e);
         salesTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar ventas</td></tr>';
@@ -658,7 +665,7 @@ function renderSalesPage(page) {
     salesCurrentPage = page;
     const startIndex = (page - 1) * salesRowsPerPage;
     const endIndex = startIndex + salesRowsPerPage;
-    const paginatedItems = currentSales.slice(startIndex, endIndex);
+    const paginatedItems = filteredSales.slice(startIndex, endIndex);
     
     salesTableBody.innerHTML = '';
     
@@ -695,7 +702,7 @@ function renderSalesPage(page) {
 }
 
 function renderSalesPagination() {
-    const totalPages = Math.ceil(currentSales.length / salesRowsPerPage);
+    const totalPages = Math.ceil(filteredSales.length / salesRowsPerPage);
     const paginationContainer = document.getElementById('sales-pagination');
     if (!paginationContainer) return;
     
@@ -724,4 +731,46 @@ function renderSalesPagination() {
 
     html += `</ul></nav>`;
     paginationContainer.innerHTML = html;
+}
+
+function applySalesFilters() {
+    const filterStart = document.getElementById('sales-filter-start')?.value;
+    const filterEnd = document.getElementById('sales-filter-end')?.value;
+    
+    filteredSales = currentSales.filter(sale => {
+        if (!filterStart && !filterEnd) return true;
+        const saleDateLocal = sale.date.split('T')[0];
+        
+        if (filterStart && saleDateLocal < filterStart) return false;
+        if (filterEnd && saleDateLocal > filterEnd) return false;
+        return true;
+    });
+    renderSalesPage(1);
+}
+
+function exportSalesToExcel() {
+    if (filteredSales.length === 0) {
+        alert("No hay ventas para exportar.");
+        return;
+    }
+    const dataToExport = filteredSales.map(sale => {
+        const dateObj = new Date(sale.date);
+        const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        return {
+            "Fecha": dateStr,
+            "Cliente": sale.client,
+            "Total (Bs)": sale.total,
+            "Productos (Cant.)": sale.items.reduce((sum, item) => sum + item.qty, 0)
+        };
+    });
+    
+    if (typeof XLSX === 'undefined') {
+        alert("La librería para exportar Excel no está cargada.");
+        return;
+    }
+    
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+    XLSX.writeFile(wb, "Reporte_Ventas.xlsx");
 }
