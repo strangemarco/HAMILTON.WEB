@@ -1,5 +1,5 @@
-import { db } from '../firebase-config.js';
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 import { showLoading, hideLoading } from './ui.js';
 import { logAction } from './logger.js';
 
@@ -24,20 +24,11 @@ export async function loadProducts() {
     currentProducts = [];
     
     try {
-        const querySnapshot = await getDocs(collection(db, "products"));
-        querySnapshot.forEach((doc) => {
-            currentProducts.push({ id: doc.id, ...doc.data() });
-        });
+        const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
         
-        // Sort products by createdAt descending (newest first)
-        currentProducts.sort((a, b) => {
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            // If they both have dates or one has a date, sort by date
-            if (timeA !== timeB) return timeB - timeA;
-            // Fallback to sorting by codigo descending so the highest numbers appear first
-            return (b.codigo || '').localeCompare(a.codigo || '');
-        });
+        currentProducts = data;
+        
         populateInventoryFilters();
         applyInventoryFilters();
     } catch (e) {
@@ -46,6 +37,7 @@ export async function loadProducts() {
         hideLoading();
     }
 }
+
 
 function populateInventoryFilters() {
     const filterBrand = document.getElementById('inv-filter-brand');
@@ -201,7 +193,7 @@ export function setupInventory() {
 
         const id = document.getElementById('prod-id').value;
         const newProduct = {
-            createdAt: new Date().toISOString(),
+            created_at: new Date().toISOString(),
             codigo: document.getElementById('prod-codigo').value,
             sust: document.getElementById('prod-sust').value,
             marca: document.getElementById('prod-marca').value,
@@ -214,11 +206,13 @@ export function setupInventory() {
 
         try {
             if (id) {
-                const prodRef = doc(db, "products", id);
-                await updateDoc(prodRef, newProduct);
+                
+                const { error } = await supabase.from('products').update(newProduct).eq('id', id);
+                if (error) throw error;
                 await logAction("Editar Producto", "Inventario", `Editó el producto ${newProduct.codigo}`);
             } else {
-                await addDoc(collection(db, "products"), newProduct);
+                const { error } = await supabase.from('products').insert([newProduct]);
+                if (error) throw error;
                 await logAction("Crear Producto", "Inventario", `Creó el producto ${newProduct.codigo}`);
             }
             
@@ -231,7 +225,7 @@ export function setupInventory() {
             
             // Reload
             await loadProducts();
-            Swal.fire('Â¡Éxito!', 'Producto guardado correctamente', 'success');
+            Swal.fire('Ãƒâ€šÃ‚Â¡Éxito!', 'Producto guardado correctamente', 'success');
         } catch (e) {
             Swal.fire('Error', 'Error al guardar: ' + e.message, 'error');
         } finally {
@@ -287,13 +281,13 @@ export function setupInventory() {
                 },
                 inputValidator: (value) => {
                     if (!value || value.trim() === '') {
-                        return 'Â¡Necesitas escribir un motivo!'
+                        return 'Ãƒâ€šÃ‚Â¡Necesitas escribir un motivo!'
                     }
                 }
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     try {
-                        const prodRef = doc(db, "products", id);
+                        
                         await updateDoc(prodRef, {
                             estado: 'baja',
                             motivoBaja: result.value.trim(),
@@ -302,7 +296,7 @@ export function setupInventory() {
                         await logAction("Dar de baja", "Inventario", `Dio de baja el producto con motivo: ${result.value.trim()}`);
                         await loadProducts();
                         Swal.fire({
-                            title: 'Â¡Dado de baja!',
+                            title: 'Ãƒâ€šÃ‚Â¡Dado de baja!',
                             text: 'El repuesto ya no aparecerá en el inventario activo.',
                             icon: 'success',
                             customClass: {
@@ -320,7 +314,7 @@ export function setupInventory() {
         if (btnRestore) {
             const id = btnRestore.dataset.id;
             Swal.fire({
-                title: 'Â¿Restaurar Producto?',
+                title: 'Ãƒâ€šÃ‚Â¿Restaurar Producto?',
                 text: "Este producto volverá a estar activo y disponible para ventas.",
                 icon: 'question',
                 showCancelButton: true,
@@ -336,14 +330,14 @@ export function setupInventory() {
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     try {
-                        const prodRef = doc(db, "products", id);
+                        
                         await updateDoc(prodRef, {
                             estado: 'activo'
                         });
                         await logAction("Restaurar Producto", "Inventario", `Restauró el producto con ID ${id}`);
                         await loadProducts();
                         Swal.fire({
-                            title: 'Â¡Restaurado!',
+                            title: 'Ãƒâ€šÃ‚Â¡Restaurado!',
                             text: 'El producto vuelve a estar activo.',
                             icon: 'success',
                             customClass: {
@@ -454,4 +448,6 @@ function exportInventoryExcel() {
         Swal.fire('Error', 'Hubo un problema al generar el archivo Excel.', 'error');
     }
 }
+
+
 

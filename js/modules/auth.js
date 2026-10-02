@@ -1,5 +1,4 @@
-import { auth } from '../firebase-config.js';
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+﻿import { supabase } from '../supabase-config.js';
 import { updateNavbarUser } from './ui.js';
 import { initInventory } from './inventory.js';
 import { initSalesView } from './sales.js';
@@ -22,8 +21,10 @@ export function setupAuth() {
             try {
                 btn.disabled = true;
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Ingresando...';
-                await signInWithEmailAndPassword(auth, email, password);
-                // Redirect is handled by onAuthStateChanged
+                
+                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                // Redirect is handled by onAuthStateChange
             } catch (error) {
                 Swal.fire('Error', 'Error: ' + error.message, 'error');
                 btn.disabled = false;
@@ -34,15 +35,17 @@ export function setupAuth() {
 
     if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
-            await signOut(auth);
+            await supabase.auth.signOut();
         });
     }
 
-    onAuthStateChanged(auth, async (user) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
         const path = window.location.pathname;
         const isLoginPage = path.endsWith('index.html') || path.endsWith('/');
         const isUsersPage = path.endsWith('users.html');
         const isDashboardPage = path.endsWith('dashboard.html');
+
+        const user = session?.user;
 
         if (user) {
             // Determine Role and fetch full user data
@@ -50,7 +53,6 @@ export function setupAuth() {
             const role = await getUserRole(user.email);
             const userData = await getUserData(user.email) || {};
             
-            // Save to local storage so it's available synchronously later (e.g. for receipts)
             localStorage.setItem('hamilton_user', JSON.stringify({
                 email: user.email,
                 role: role,
@@ -90,8 +92,10 @@ export function setupAuth() {
                 document.body.classList.remove('loading-auth');
             }
         } else {
-            if (!isLoginPage) {
+            if (!isLoginPage && event === 'SIGNED_OUT') {
                 window.location.href = 'index.html';
+            } else if (!isLoginPage) {
+                 window.location.href = 'index.html';
             } else {
                 document.body.classList.remove('loading-auth');
             }

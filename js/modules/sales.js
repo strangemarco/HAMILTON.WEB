@@ -1,5 +1,5 @@
-﻿import { db } from '../firebase-config.js';
-import { collection, addDoc, doc, updateDoc, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 import { logAction } from './logger.js';
 
 
@@ -38,10 +38,8 @@ export async function initSalesView() {
     saleProductDatalist.innerHTML = '';
     
     // We need to fetch products first since we are on a separate page
-    const productsSnapshot = await getDocs(collection(db, "products"));
-    availableProducts = [];
-    productsSnapshot.forEach((doc) => {
-        availableProducts.push({ id: doc.id, ...doc.data() });
+    const { data: prods } = await supabase.from('products').select('*');
+    availableProducts = prods || [];
     });
     
     availableProducts.forEach(p => {
@@ -636,25 +634,30 @@ function updateCartUI() {
 
 
 async function loadSales() {
-    salesTableBody.innerHTML = `
-        <tr>
-            <td colspan="5" class="text-center">
-                <div class="spinner-border text-primary my-3" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-            </td>
-        </tr>
-    `;
+    salesTableBody.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary my-3"></div></td></tr>';
     try {
-        const q = query(collection(db, "sales"), orderBy("date", "desc"));
-        const querySnapshot = await getDocs(q);
+        const { data, error } = await supabase.from('sales').select('*, sale_items(*)').order('date', { ascending: false });
+        if (error) throw error;
         
-        currentSales = [];
-        querySnapshot.forEach((doc) => {
-            currentSales.push(doc.data());
-        });
+        currentSales = data.map(s => ({
+            id: s.id,
+            client: s.client,
+            seller: s.seller_name,
+            date: s.date,
+            total: s.total,
+            paymentMethod: s.payment_method,
+            amountPaid: s.amount_paid,
+            change: s.change,
+            items: s.sale_items.map(si => ({
+                productId: si.product_id,
+                codigo: si.codigo,
+                descripcion: si.descripcion,
+                qty: si.qty,
+                price: si.price
+            }))
+        }));
         
-        
+        applySalesFilters();
     } catch (e) {
         console.error("Error loading sales:", e);
         salesTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar ventas</td></tr>';
@@ -774,3 +777,4 @@ function exportSalesToExcel() {
     XLSX.utils.book_append_sheet(wb, ws, "Ventas");
     XLSX.writeFile(wb, "Reporte_Ventas.xlsx");
 }
+

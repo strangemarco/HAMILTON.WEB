@@ -1,5 +1,5 @@
-import { db } from '../firebase-config.js';
-import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 
 const cajaDateInput = document.getElementById('caja-date');
 const btnLoadCaja = document.getElementById('btn-load-caja');
@@ -84,7 +84,7 @@ async function loadCajaData() {
                 currentCajaData.push([
                     timeStr,
                     data.seller || 'Desconocido',
-                    data.client || 'Público',
+                    data.client || 'PÃºblico',
                     data.paymentMethod || 'Efectivo',
                     saleTotal
                 ]);
@@ -93,7 +93,7 @@ async function loadCajaData() {
                 tr.innerHTML = `
                     <td>${timeStr}</td>
                     <td>${data.seller || 'Desconocido'}</td>
-                    <td>${data.client || 'Público'}</td>
+                    <td>${data.client || 'PÃºblico'}</td>
                     <td>
                         <span class="badge ${data.paymentMethod === 'Efectivo' ? 'bg-success' : 'bg-info'}">
                             ${data.paymentMethod || 'Efectivo'}
@@ -126,7 +126,7 @@ async function loadCajaData() {
 
 function exportToExcel() {
     if (currentCajaData.length === 0) {
-        Swal.fire('Atención', 'No hay datos para exportar en esta fecha.', 'warning');
+        Swal.fire('AtenciÃ³n', 'No hay datos para exportar en esta fecha.', 'warning');
         return;
     }
     
@@ -139,7 +139,7 @@ function exportToExcel() {
             ["REPORTE DE CIERRE DE CAJA"],
             ["Fecha:", dateStr],
             [],
-            ["Hora", "Vendedor", "Cliente", "Método de Pago", "Total (Bs)"]
+            ["Hora", "Vendedor", "Cliente", "MÃ©todo de Pago", "Total (Bs)"]
         ];
         
         // Add all rows
@@ -218,3 +218,4 @@ function exportToExcel() {
         Swal.fire('Error', 'Hubo un problema al generar el archivo Excel.', 'error');
     }
 }
+

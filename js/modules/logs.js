@@ -1,5 +1,5 @@
-import { db } from '../firebase-config.js';
-import { collection, getDocs, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 
 export async function initLogsView() {
     const tableBody = document.getElementById('logs-table-body');
@@ -36,3 +36,5 @@ export async function initLogsView() {
         tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar el historial.</td></tr>';
     }
 }
+
+

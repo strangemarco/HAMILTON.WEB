@@ -1,5 +1,5 @@
-import { db, auth } from '../firebase-config.js';
-import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 
 export async function logAction(action, module, details) {
     try {
@@ -17,3 +17,5 @@ export async function logAction(action, module, details) {
         console.error("Error saving log:", e);
     }
 }
+
+

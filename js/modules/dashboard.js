@@ -1,5 +1,5 @@
-import { db } from '../firebase-config.js';
-import { collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 
 const kpiIngresosHoy = document.getElementById('kpi-ingresos-hoy');
 const kpiVentasHoy = document.getElementById('kpi-ventas-hoy');
@@ -47,24 +47,35 @@ export async function initDashboardView() {
 
 async function loadInitialData() {
     try {
-        // Fetch products
-        const productsSnap = await getDocs(collection(db, "products"));
-        allProducts = [];
-        productsSnap.forEach(doc => {
-            allProducts.push({ id: doc.id, ...doc.data() });
-        });
+        const { data: prods, error: prodErr } = await supabase.from('products').select('*');
+        if (prodErr) throw prodErr;
+        allProducts = prods || [];
 
-        // Fetch sales
-        const salesQuery = query(collection(db, "sales"), orderBy("date", "desc"));
-        const salesSnap = await getDocs(salesQuery);
-        allSales = [];
-        salesSnap.forEach(doc => {
-            allSales.push({ id: doc.id, ...doc.data() });
-        });
+        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*, sale_items(*)').order('date', { ascending: false });
+        if (salesErr) throw salesErr;
+        
+        allSales = salesData.map(s => ({
+            id: s.id,
+            client: s.client,
+            seller: s.seller_name,
+            date: s.date,
+            total: s.total,
+            paymentMethod: s.payment_method,
+            amountPaid: s.amount_paid,
+            change: s.change,
+            items: s.sale_items.map(si => ({
+                productId: si.product_id,
+                codigo: si.codigo,
+                descripcion: si.descripcion,
+                qty: si.qty,
+                price: si.price
+            }))
+        }));
     } catch (e) {
         console.error("Error loading initial data", e);
     }
 }
+
 
 function populateFilters() {
     const filterBrand = document.getElementById('filter-brand');
@@ -217,7 +228,7 @@ function renderSalesChart(last7Days) {
         data: {
             labels: Object.keys(last7Days),
             datasets: [{
-                label: 'Ingresos por Día (Bs)',
+                label: 'Ingresos por DÃ­a (Bs)',
                 data: Object.values(last7Days),
                 borderColor: '#dc3545',
                 backgroundColor: 'rgba(220, 53, 69, 0.08)',
@@ -344,9 +355,9 @@ function exportToExcel() {
         const aoa = [
             ["REPUESTOS HAMILTON"],
             ["REPORTE DE VENTAS (DASHBOARD)"],
-            ["Fecha de Exportación:", dateStr],
+            ["Fecha de ExportaciÃ³n:", dateStr],
             [],
-            ["Fecha Transacción", "Cliente", "Método Pago", "Código", "Descripción", "Marca", "Cant. Vendida", "Precio Unitario (Bs)", "Total (Bs)", "Stock Actual"]
+            ["Fecha TransacciÃ³n", "Cliente", "MÃ©todo Pago", "CÃ³digo", "DescripciÃ³n", "Marca", "Cant. Vendida", "Precio Unitario (Bs)", "Total (Bs)", "Stock Actual"]
         ];
         
         let totalGeneral = 0;
@@ -441,3 +452,4 @@ function exportToExcel() {
         Swal.fire('Error', 'Hubo un problema al generar el archivo Excel.', 'error');
     }
 }
+

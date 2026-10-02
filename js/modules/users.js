@@ -1,5 +1,5 @@
-import { db } from '../firebase-config.js';
-import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+﻿import { supabase } from '../supabase-config.js';
+
 
 const usersTableBody = document.getElementById('users-table-body');
 const userForm = document.getElementById('user-form');
@@ -7,34 +7,15 @@ const btnSaveUser = document.getElementById('btn-save-user');
 
 export async function getUserRole(email) {
     try {
-        const q = query(collection(db, "roles"), where("email", "==", email));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            return snapshot.docs[0].data().role;
-        }
-    } catch(e) {
-        console.error("Error getting role", e);
-    }
-    // Default to admin if no roles defined at all? No, let's default to Admin if the database is literally empty (first time setup).
-    try {
-        const check = await getDocs(collection(db, "roles"));
-        if (check.empty) {
-            // First user gets Admin automatically
-            await addDoc(collection(db, "roles"), {
-            createdAt: new Date().toISOString(), email: email, role: "Admin", nombre: "Admin", apellido: "Principal" });
-            return "Admin";
-        }
-    } catch(e) {}
-    
-    return "Cajero"; // Default fallback
+        const { data, error } = await supabase.from('users').select('role').eq('email', email).maybeSingle();
+        if (data && data.role) return data.role;
+    } catch(e) { console.error("Error getting role", e); }
+    return "Cajero";
 }
 export async function getUserData(email) {
     try {
-        const q = query(collection(db, "roles"), where("email", "==", email));
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-            return snapshot.docs[0].data();
-        }
+        const { data, error } = await supabase.from('users').select('*').eq('email', email).maybeSingle();
+        if (data) return data;
     } catch(e) {}
     return null;
 }
@@ -46,38 +27,19 @@ export async function initUsersView() {
 }
 
 async function loadUsers() {
-    usersTableBody.innerHTML = `
-        <tr>
-            <td colspan="3" class="text-center">
-                <div class="spinner-border text-primary my-3" role="status">
-                    <span class="visually-hidden">Cargando...</span>
-                </div>
-            </td>
-        </tr>
-    `;
+    usersTableBody.innerHTML = <tr><td colspan="5" class="text-center"><div class="spinner-border text-primary my-3"></div></td></tr>;
     try {
-        const querySnapshot = await getDocs(collection(db, "roles"));
+        const { data: users, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        
         usersTableBody.innerHTML = '';
-        
-        const users = [];
-        querySnapshot.forEach((docSnap) => {
-            users.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        
-        users.sort((a, b) => {
-            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return timeB - timeA;
-        });
-        
         users.forEach((data) => {
             const id = data.id;
             const tr = document.createElement('tr');
-            
-            const fullName = `${data.nombre || ''} ${data.apellido || ''}`.trim() || 'Sin Nombre';
+            const fullName = ${data.nombre || ''} .trim() || 'Sin Nombre';
             const ci = data.ci || '-';
             
-            tr.innerHTML = `
+            tr.innerHTML = 
                 <td class="fw-bold">${fullName}</td>
                 <td>${ci}</td>
                 <td class="text-muted">${data.email}</td>
@@ -88,148 +50,100 @@ async function loadUsers() {
                     </button>
                     <button class="btn btn-sm btn-outline-danger btn-delete-user" data-id="${id}"><i class="bi bi-trash"></i></button>
                 </td>
-            `;
+            ;
             usersTableBody.appendChild(tr);
         });
     } catch (e) {
-        usersTableBody.innerHTML = '<tr><td colspan="3" class="text-danger text-center">Error al cargar roles.</td></tr>';
+        usersTableBody.innerHTML = '<tr><td colspan="5" class="text-danger text-center">Error al cargar roles.</td></tr>';
     }
 }
 
 function setupUsers() {
     btnSaveUser.addEventListener('click', async () => {
-        if (btnSaveUser.disabled) return;
-        btnSaveUser.disabled = true;
-        const originalText = btnSaveUser.innerHTML;
-        btnSaveUser.innerHTML = '<span class="spinner-border spinner-border-sm"></span>...';
-
-        const email = document.getElementById('user-email').value;
-        const role = document.getElementById('user-role').value;
+        const id = document.getElementById('user-id').value;
         const nombre = document.getElementById('user-nombre').value;
         const apellido = document.getElementById('user-apellido').value;
         const ci = document.getElementById('user-ci').value;
-        const sexo = document.getElementById('user-sexo').value;
-        const password = document.getElementById('user-password').value;
-
-        if (!email || !nombre || !apellido || !ci || !sexo) {
-            Swal.fire('Atención', 'Todos los campos básicos son requeridos', 'warning');
-            btnSaveUser.disabled = false;
-            btnSaveUser.innerHTML = originalText;
+        const email = document.getElementById('user-email').value;
+        const role = document.getElementById('user-role').value;
+        
+        if (!email || !nombre) {
+            Swal.fire('Error', 'Nombre y Email son obligatorios', 'error');
             return;
         }
 
         try {
-            // If there's a password, we create the auth user
-            if (password) {
-                const { createUserWithEmailAndPassword, getAuth } = await import("https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js");
-                const secondAuth = getAuth(); 
-                // Note: using the same auth instance will log the admin out.
-                // We'll let Firebase do it or warn the user.
-                try {
-                    await createUserWithEmailAndPassword(secondAuth, email, password);
-                    // We might get logged out here, but we continue saving the role
-                } catch(err) {
-                    Swal.fire('Error Auth', err.message, 'error');
-                    btnSaveUser.disabled = false;
-                    btnSaveUser.innerHTML = originalText;
-                    return;
-                }
-            }
+            btnSaveUser.disabled = true;
+            btnSaveUser.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
-            const userId = document.getElementById('user-id').value;
-            const userData = { email, role, nombre, apellido, ci, sexo };
-            
-            if (userId) {
-                // Update by ID
-                const docRef = doc(db, "roles", userId);
-                await updateDoc(docRef, userData);
+            if (id) {
+                // Update
+                const { error } = await supabase.from('users').update({
+                    nombre, apellido, ci, email, role
+                }).eq('id', id);
+                if (error) throw error;
+                Swal.fire('Éxito', 'Usuario actualizado', 'success');
             } else {
-                // Check if email already exists before inserting
-                const q = query(collection(db, "roles"), where("email", "==", email));
-                const snap = await getDocs(q);
-                if (!snap.empty) {
-                    Swal.fire('Atención', 'Ya existe un usuario con este correo', 'warning');
-                    btnSaveUser.disabled = false;
-                    btnSaveUser.innerHTML = originalText;
-                    return;
-                }
-                // Insert
-                await addDoc(collection(db, "roles"), userData);
+                // Not supported from client without Edge function since we need to create auth user
+                Swal.fire('Atención', 'Para crear nuevos usuarios, debes crearlos primero en la consola de Supabase Auth.', 'warning');
             }
             
             const modalEl = document.getElementById('userModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
-            modal.hide();
+            if (modal) modal.hide();
             userForm.reset();
+            document.getElementById('user-id').value = '';
             
             await loadUsers();
-            Swal.fire('Â¡Guardado!', 'El rol se ha guardado correctamente.', 'success');
-        } catch(e) {
-            Swal.fire('Error', 'Error: ' + e.message, 'error');
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
         } finally {
             btnSaveUser.disabled = false;
-            btnSaveUser.innerHTML = originalText;
+            btnSaveUser.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Usuario';
         }
     });
 
     usersTableBody.addEventListener('click', async (e) => {
-        const btnDelete = e.target.closest('.btn-delete-user');
         const btnEdit = e.target.closest('.btn-edit-user');
-        
         if (btnEdit) {
-            const id = btnEdit.dataset.id;
-            const userData = JSON.parse(btnEdit.dataset.user.replace(/&apos;/g, "'"));
-            
-            document.getElementById('user-id').value = id;
-            document.getElementById('user-email').value = userData.email || '';
-            document.getElementById('user-role').value = userData.role || 'Cajero';
-            document.getElementById('user-nombre').value = userData.nombre || '';
-            document.getElementById('user-apellido').value = userData.apellido || '';
-            document.getElementById('user-ci').value = userData.ci || '';
-            document.getElementById('user-sexo').value = userData.sexo || '';
-            document.getElementById('user-password').value = '';
-            
-            document.querySelector('.modal-title').textContent = 'Editar Usuario';
+            const data = JSON.parse(btnEdit.dataset.user);
+            document.getElementById('user-id').value = data.id;
+            document.getElementById('user-nombre').value = data.nombre || '';
+            document.getElementById('user-apellido').value = data.apellido || '';
+            document.getElementById('user-ci').value = data.ci || '';
+            document.getElementById('user-email').value = data.email || '';
+            document.getElementById('user-role').value = data.role || 'Empleado';
             
             const modal = new bootstrap.Modal(document.getElementById('userModal'));
             modal.show();
-            return;
         }
-
+        
+        const btnDelete = e.target.closest('.btn-delete-user');
         if (btnDelete) {
             const id = btnDelete.dataset.id;
-            Swal.fire({
-                title: 'Â¿Estás seguro?',
-                text: "Esta acción no se puede deshacer.",
+            const res = await Swal.fire({
+                title: '¿Eliminar usuario?',
+                text: "No podrás revertir esto.",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, eliminar',
-                cancelButtonText: 'Cancelar'
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    try {
-                        await deleteDoc(doc(db, "roles", id));
-                        await loadUsers();
-                        Swal.fire('Â¡Eliminado!', 'El rol ha sido eliminado.', 'success');
-                    } catch(err) {
-                        Swal.fire('Error', 'Error al eliminar: ' + err.message, 'error');
-                    }
-                }
+                confirmButtonText: 'Sí, eliminar'
             });
-        }
-    });
-
-    // Reset modal when opened manually (not via Edit)
-    const userModalEl = document.getElementById('userModal');
-    userModalEl.addEventListener('show.bs.modal', function (event) {
-        // If the modal was triggered by the "Registrar Rol" button
-        if (event.relatedTarget && event.relatedTarget.hasAttribute('data-bs-target')) {
-            userForm.reset();
-            document.getElementById('user-id').value = '';
-            document.querySelector('.modal-title').textContent = 'Registrar Nuevo Usuario';
+            
+            if (res.isConfirmed) {
+                try {
+                    const { error } = await supabase.from('users').delete().eq('id', id);
+                    if (error) throw error;
+                    Swal.fire('Eliminado', 'Usuario borrado', 'success');
+                    await loadUsers();
+                } catch (err) {
+                    Swal.fire('Error', err.message, 'error');
+                }
+            }
         }
     });
 }
+
+
 
