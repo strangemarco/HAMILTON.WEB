@@ -1,4 +1,4 @@
-import { db } from '../firebase-config.js';
+﻿import { db } from '../firebase-config.js';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 import { showLoading, hideLoading } from './ui.js';
 import { logAction } from './logger.js';
@@ -191,6 +191,7 @@ export function setupInventory() {
 
         const id = document.getElementById('prod-id').value;
         const newProduct = {
+            createdAt: new Date().toISOString(),
             codigo: document.getElementById('prod-codigo').value,
             sust: document.getElementById('prod-sust').value,
             marca: document.getElementById('prod-marca').value,
@@ -220,7 +221,7 @@ export function setupInventory() {
             
             // Reload
             await loadProducts();
-            Swal.fire('¡Éxito!', 'Producto guardado correctamente', 'success');
+            Swal.fire('Â¡Éxito!', 'Producto guardado correctamente', 'success');
         } catch (e) {
             Swal.fire('Error', 'Error al guardar: ' + e.message, 'error');
         } finally {
@@ -276,7 +277,7 @@ export function setupInventory() {
                 },
                 inputValidator: (value) => {
                     if (!value || value.trim() === '') {
-                        return '¡Necesitas escribir un motivo!'
+                        return 'Â¡Necesitas escribir un motivo!'
                     }
                 }
             }).then(async (result) => {
@@ -291,7 +292,7 @@ export function setupInventory() {
                         await logAction("Dar de baja", "Inventario", `Dio de baja el producto con motivo: ${result.value.trim()}`);
                         await loadProducts();
                         Swal.fire({
-                            title: '¡Dado de baja!',
+                            title: 'Â¡Dado de baja!',
                             text: 'El repuesto ya no aparecerá en el inventario activo.',
                             icon: 'success',
                             customClass: {
@@ -309,7 +310,7 @@ export function setupInventory() {
         if (btnRestore) {
             const id = btnRestore.dataset.id;
             Swal.fire({
-                title: '¿Restaurar Producto?',
+                title: 'Â¿Restaurar Producto?',
                 text: "Este producto volverá a estar activo y disponible para ventas.",
                 icon: 'question',
                 showCancelButton: true,
@@ -332,7 +333,7 @@ export function setupInventory() {
                         await logAction("Restaurar Producto", "Inventario", `Restauró el producto con ID ${id}`);
                         await loadProducts();
                         Swal.fire({
-                            title: '¡Restaurado!',
+                            title: 'Â¡Restaurado!',
                             text: 'El producto vuelve a estar activo.',
                             icon: 'success',
                             customClass: {
@@ -443,3 +444,4 @@ function exportInventoryExcel() {
         Swal.fire('Error', 'Hubo un problema al generar el archivo Excel.', 'error');
     }
 }
+

@@ -1,4 +1,4 @@
-import { db } from '../firebase-config.js';
+﻿import { db } from '../firebase-config.js';
 import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
 
 const usersTableBody = document.getElementById('users-table-body');
@@ -20,7 +20,8 @@ export async function getUserRole(email) {
         const check = await getDocs(collection(db, "roles"));
         if (check.empty) {
             // First user gets Admin automatically
-            await addDoc(collection(db, "roles"), { email: email, role: "Admin", nombre: "Admin", apellido: "Principal" });
+            await addDoc(collection(db, "roles"), {
+            createdAt: new Date().toISOString(), email: email, role: "Admin", nombre: "Admin", apellido: "Principal" });
             return "Admin";
         }
     } catch(e) {}
@@ -152,7 +153,7 @@ function setupUsers() {
             userForm.reset();
             
             await loadUsers();
-            Swal.fire('¡Guardado!', 'El rol se ha guardado correctamente.', 'success');
+            Swal.fire('Â¡Guardado!', 'El rol se ha guardado correctamente.', 'success');
         } catch(e) {
             Swal.fire('Error', 'Error: ' + e.message, 'error');
         } finally {
@@ -188,7 +189,7 @@ function setupUsers() {
         if (btnDelete) {
             const id = btnDelete.dataset.id;
             Swal.fire({
-                title: '¿Estás seguro?',
+                title: 'Â¿Estás seguro?',
                 text: "Esta acción no se puede deshacer.",
                 icon: 'warning',
                 showCancelButton: true,
@@ -201,7 +202,7 @@ function setupUsers() {
                     try {
                         await deleteDoc(doc(db, "roles", id));
                         await loadUsers();
-                        Swal.fire('¡Eliminado!', 'El rol ha sido eliminado.', 'success');
+                        Swal.fire('Â¡Eliminado!', 'El rol ha sido eliminado.', 'success');
                     } catch(err) {
                         Swal.fire('Error', 'Error al eliminar: ' + err.message, 'error');
                     }
@@ -221,3 +222,4 @@ function setupUsers() {
         }
     });
 }
+
