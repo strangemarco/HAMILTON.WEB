@@ -1,4 +1,4 @@
-﻿import { supabase } from '../supabase-config.js';
+import { supabase } from '../supabase-config.js';
 
 
 const usersTableBody = document.getElementById('users-table-body');
@@ -27,7 +27,7 @@ export async function initUsersView() {
 }
 
 async function loadUsers() {
-    usersTableBody.innerHTML = <tr><td colspan="5" class="text-center"><div class="spinner-border text-primary my-3"></div></td></tr>;
+    usersTableBody.innerHTML = `<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary my-3"></div></td></tr>`;
     try {
         const { data: users, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
         if (error) throw error;
@@ -36,10 +36,10 @@ async function loadUsers() {
         users.forEach((data) => {
             const id = data.id;
             const tr = document.createElement('tr');
-            const fullName = ${data.nombre || ''} .trim() || 'Sin Nombre';
+            const fullName = `${data.nombre || ''} ${data.apellido || ''}`.trim() || 'Sin Nombre';
             const ci = data.ci || '-';
             
-            tr.innerHTML = 
+            tr.innerHTML = `
                 <td class="fw-bold">${fullName}</td>
                 <td>${ci}</td>
                 <td class="text-muted">${data.email}</td>
@@ -50,7 +50,7 @@ async function loadUsers() {
                     </button>
                     <button class="btn btn-sm btn-outline-danger btn-delete-user" data-id="${id}"><i class="bi bi-trash"></i></button>
                 </td>
-            ;
+            `;
             usersTableBody.appendChild(tr);
         });
     } catch (e) {

@@ -1,4 +1,4 @@
-﻿import { supabase } from '../supabase-config.js';
+import { supabase } from '../supabase-config.js';
 
 import { logAction } from './logger.js';
 
@@ -40,8 +40,8 @@ export async function initSalesView() {
     // We need to fetch products first since we are on a separate page
     const { data: prods } = await supabase.from('products').select('*');
     availableProducts = prods || [];
-    });
     
+
     availableProducts.forEach(p => {
         // Only show products with stock
         if (p.stock > 0) {
