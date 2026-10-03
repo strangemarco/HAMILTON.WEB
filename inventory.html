@@ -1,5 +1,6 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,29 +10,34 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 
+    <link rel="icon" type="image/png" href="img/logo.png">
 </head>
+
 <body class="loading-auth">
-    
+
     <div class="d-flex" style="min-height: 100vh;">
         <!-- Sidebar -->
         <div class="bg-dark text-white p-3 d-flex flex-column" id="sidebar" style="width: 260px;">
             <a href="#" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                <i class="bi bi-tools fs-4 me-2 text-primary"></i>
+                <img src="img/logo.png" alt="Logo"
+                    style="width: 32px; height: 32px; object-fit: cover; border-radius: 6px;" class="me-2 shadow-sm">
                 <span class="fs-5 fw-bold">Repuestos Hamilton</span>
             </a>
             <hr>
             <ul class="nav nav-pills flex-column mb-auto gap-1">
                 <li class="nav-item mt-2 mb-1 d-none" id="nav-header-principal">
-                    <small class="text-uppercase text-secondary fw-bold ms-3" style="font-size: 0.7rem; letter-spacing: 1px;">Principal</small>
+                    <small class="text-uppercase text-secondary fw-bold ms-3"
+                        style="font-size: 0.7rem; letter-spacing: 1px;">Principal</small>
                 </li>
                 <li class="nav-item d-none" id="nav-item-dashboard">
                     <a href="dashboard.html" class="nav-link text-white" id="nav-dashboard">
                         <i class="bi bi-speedometer2 me-2"></i> Dashboard
                     </a>
                 </li>
-                
+
                 <li class="nav-item mt-3 mb-1">
-                    <small class="text-uppercase text-secondary fw-bold ms-3" style="font-size: 0.7rem; letter-spacing: 1px;">GestiÃ³n</small>
+                    <small class="text-uppercase text-secondary fw-bold ms-3"
+                        style="font-size: 0.7rem; letter-spacing: 1px;">Gestión</small>
                 </li>
                 <li class="nav-item">
                     <a href="inventory.html" class="nav-link active" id="nav-inventory">
@@ -48,9 +54,10 @@
                         <i class="bi bi-cash-stack me-2"></i> Cierre de Caja
                     </a>
                 </li>
-                
+
                 <li class="nav-item mt-3 mb-1 admin-only" id="nav-header-admin">
-                    <small class="text-uppercase text-secondary fw-bold ms-3" style="font-size: 0.7rem; letter-spacing: 1px;">Sistema</small>
+                    <small class="text-uppercase text-secondary fw-bold ms-3"
+                        style="font-size: 0.7rem; letter-spacing: 1px;">Sistema</small>
                 </li>
                 <li class="nav-item admin-only" id="nav-item-users">
                     <a href="users.html" class="nav-link text-white" id="nav-users">
@@ -73,7 +80,7 @@
                     </div>
                 </div>
                 <button class="btn btn-outline-light btn-sm w-100" id="btn-logout">
-                    <i class="bi bi-box-arrow-right me-1"></i> Cerrar SesiÃ³n
+                    <i class="bi bi-box-arrow-right me-1"></i> Cerrar Sesión
                 </button>
                 <div class="mt-4 text-center" style="font-size: 0.75rem; color: rgba(255,255,255,0.4);">
                     Desarrollado por {Dev Marco}
@@ -82,84 +89,127 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-grow-1 bg-body-tertiary d-flex flex-column" style="width: calc(100% - 260px); overflow: hidden;">
+        <div class="flex-grow-1 bg-body-tertiary d-flex flex-column"
+            style="width: calc(100% - 260px); overflow: hidden;">
             <!-- Topbar -->
             <div class="d-flex justify-content-between align-items-center p-3 bg-body shadow-sm border-bottom">
                 <button class="btn btn-light" id="btn-toggle-sidebar"><i class="bi bi-list fs-5"></i></button>
                 <div class="form-check form-switch d-flex align-items-center">
                     <input class="form-check-input me-2 fs-5" type="checkbox" id="theme-toggle">
-                    <label class="form-check-label" for="theme-toggle"><i class="bi bi-moon-stars-fill text-secondary"></i></label>
+                    <label class="form-check-label" for="theme-toggle"><i
+                            class="bi bi-moon-stars-fill text-secondary"></i></label>
                 </div>
             </div>
 
             <!-- Page Content -->
             <div class="p-4 overflow-auto flex-grow-1" id="app-screen">
-        <div id="loading-indicator" class="text-center d-none my-5">
-            <div class="spinner-border text-primary" role="status"></div>
-        </div>
+                <div id="loading-indicator" class="text-center d-none my-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
 
-        <div id="view-inventory">
-            <div class="mb-4">
-                <p class="display-6 fw-bold text-primary mb-0" style="font-size: 1.8rem;">GestiÃ³n de Inventario</p>
-            </div>
-            
-            <div class="filter-bar">
-                <div class="row g-2 align-items-center">
-                    <div class="col-12 col-md-4">
-                        <input type="text" class="form-control form-control-sm" id="inv-filter-search" placeholder="Buscar por cÃ³digo o descripciÃ³n...">
+                <div id="view-inventory">
+                    <div class="mb-4">
+                        <p class="display-6 fw-bold text-primary mb-0" style="font-size: 1.8rem;">Catálogo de Repuestos
+                        </p>
                     </div>
-                    <div class="col-6 col-md-2">
-                        <select class="form-select form-select-sm" id="inv-filter-brand">
-                            <option value="">Todas las marcas</option>
-                        </select>
+
+                    <div class="filter-bar">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-12 col-md">
+                                <input type="text" class="form-control form-control-sm" id="inv-filter-search"
+                                    placeholder="Buscar repuesto...">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="dropdown">
+                                <button class="form-select form-select-sm text-start w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="brand-dropdown-btn">
+                                    Todas las marcas
+                                </button>
+                                <ul class="dropdown-menu w-100 shadow-sm" style="max-height: 320px; overflow-y: auto;" id="inv-filter-brand-list">
+                                </ul>
+                            </div>
+                            <input type="hidden" id="inv-filter-brand" value="">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <select class="form-select form-select-sm border-danger text-danger fw-bold"
+                                    id="inv-filter-status">
+                                    <option value="activos" class="text-dark">Activos</option>
+                                    <option value="baja" class="text-danger">Dados de Baja</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-auto">
+                                <button class="btn btn-outline-info btn-sm w-100 rounded-0 admin-only"
+                                    data-bs-toggle="modal" data-bs-target="#importModal">
+                                    <i class="bi bi-cloud-arrow-up me-1"></i> Importar
+                                </button>
+                            </div>
+                            <div class="col-6 col-md-auto">
+                                <button class="btn btn-outline-success btn-sm w-100 rounded-0"
+                                    id="btn-export-inventory">
+                                    <i class="bi bi-file-excel"></i> Reporte
+                                </button>
+                            </div>
+                            <div class="col-12 col-md-auto">
+                                <button class="btn btn-outline-primary btn-sm w-100 rounded-0 admin-only"
+                                    data-bs-toggle="modal" data-bs-target="#productModal">
+                                    <i class="bi bi-plus-circle me-1"></i> Añadir repuesto
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-6 col-md-2">
-                        <select class="form-select form-select-sm border-danger text-danger fw-bold" id="inv-filter-status">
-                            <option value="activos" class="text-dark">Activos</option>
-                            <option value="baja" class="text-danger">Dados de Baja</option>
-                        </select>
-                    </div>
-                    <div class="col-6 col-md-2 mt-3 mt-md-0">
-                        <button class="btn btn-outline-success btn-sm w-100 rounded-0" id="btn-export-inventory">
-                            <i class="bi bi-file-excel"></i> Exportar
-                        </button>
-                    </div>
-                    <div class="col-6 col-md-2 mt-3 mt-md-0">
-                        <button class="btn btn-outline-primary btn-sm w-100 rounded-0 admin-only" data-bs-toggle="modal" data-bs-target="#productModal">
-                            <i class="bi bi-plus-circle me-1"></i> Nuevo
-                        </button>
+
+                    <div class="custom-panel">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Código</th>
+                                        <th scope="col">Sust.</th>
+                                        <th>Descripción</th>
+                                        <th>Marca</th>
+                                        <th>Precio Compra (P1)</th>
+                                        <th>Precio Límite (P2)</th>
+                                        <th>Precio Venta (P3)</th>
+                                        <th>Stock</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-table-body">
+                                    <!-- Products loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="inventory-pagination" class="mt-3 d-flex justify-content-end"></div>
                     </div>
                 </div>
             </div>
-            
-            <div class="custom-panel">
-                <div class="table-responsive">
-                    <table class="table table-custom">
-                        <thead>
-                            <tr>
-                                    <th>CÃ³digo</th>
-                                    <th>Sust.</th>
-                                    <th>DescripciÃ³n</th>
-                                    <th>Marca</th>
-                                    <th>Precio Compra (P1)</th>
-                                    <th>Precio LÃ­mite (P2)</th>
-                                    <th>Precio Venta (P3)</th>
-                                    <th>Stock</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventory-table-body">
-                                <!-- Products loaded here -->
-                            </tbody>
-                        </table>
+        </div>
+
+    </div>
+    </div>
+
+
+    <!-- Import Modal -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Importar Inventario desde Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Sube un archivo Excel (.xlsx). El sistema intentará asociar las columnas
+                        automáticamente por su nombre: <strong>CODIGO, SUSTITUTO, DESCRIPCION, MARCA, PRECIO 1, PRECIO
+                            2, PRECIO 3, STOCK</strong>.</p>
+                    <div id="drop-zone" class="p-5 text-center border border-2 border-dashed rounded bg-light"
+                        style="cursor: pointer; transition: all 0.2s ease;">
+                        <i class="bi bi-file-earmark-spreadsheet fs-1 text-success mb-3"></i>
+                        <p class="mb-1 fw-bold">Arrastra tu Excel aquí</p>
+                        <p class="text-muted small">o haz clic para buscar</p>
+                        <input type="file" id="excel-file-input" class="d-none" accept=".xlsx, .xls">
                     </div>
-                    <div id="inventory-pagination" class="mt-3 d-flex justify-content-end"></div>
                 </div>
             </div>
         </div>
-    </div>
-
-    </div>
     </div>
 
     <!-- Product Modal -->
@@ -167,22 +217,23 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">GestiÃ³n de Producto</h5>
+                    <h5 class="modal-title">Gestión de Producto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="product-form">
                         <input type="hidden" id="prod-id">
-                        
+
                         <div class="mb-4">
-                            <div class="form-section-title">IdentificaciÃ³n</div>
+                            <div class="form-section-title">Identificación</div>
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label class="form-label custom-modal-label">CÃ³digo Principal</label>
-                                    <input type="text" class="form-control custom-modal-input" id="prod-codigo" required>
+                                    <label class="form-label custom-modal-label">Código Principal</label>
+                                    <input type="text" class="form-control custom-modal-input" id="prod-codigo"
+                                        required>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label custom-modal-label">CÃ³digo Sustituto</label>
+                                    <label class="form-label custom-modal-label">Código Sustituto</label>
                                     <input type="text" class="form-control custom-modal-input" id="prod-sust">
                                 </div>
                                 <div class="col-md-4">
@@ -190,8 +241,9 @@
                                     <input type="text" class="form-control custom-modal-input" id="prod-marca">
                                 </div>
                                 <div class="col-md-12">
-                                    <label class="form-label custom-modal-label">DescripciÃ³n</label>
-                                    <input type="text" class="form-control custom-modal-input" id="prod-descripcion" required>
+                                    <label class="form-label custom-modal-label">Descripción</label>
+                                    <input type="text" class="form-control custom-modal-input" id="prod-descripcion"
+                                        required>
                                 </div>
                             </div>
                         </div>
@@ -201,27 +253,33 @@
                             <div class="row g-3">
                                 <div class="col-md-3">
                                     <label class="form-label custom-modal-label">P. Compra (P1)</label>
-                                    <input type="number" step="0.01" class="form-control custom-modal-input" id="prod-p1" required>
+                                    <input type="number" step="0.01" class="form-control custom-modal-input"
+                                        id="prod-p1" required>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label custom-modal-label">P. LÃ­mite (P2)</label>
-                                    <input type="number" step="0.01" class="form-control custom-modal-input" id="prod-p2" required>
+                                    <label class="form-label custom-modal-label">P. Límite (P2)</label>
+                                    <input type="number" step="0.01" class="form-control custom-modal-input"
+                                        id="prod-p2" required>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label custom-modal-label">P. Venta (P3)</label>
-                                    <input type="number" step="0.01" class="form-control custom-modal-input" id="prod-p3" required>
+                                    <input type="number" step="0.01" class="form-control custom-modal-input"
+                                        id="prod-p3" required>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label custom-modal-label">Stock Actual</label>
-                                    <input type="number" class="form-control custom-modal-input" id="prod-stock" required>
+                                    <input type="number" class="form-control custom-modal-input" id="prod-stock"
+                                        required>
                                 </div>
                             </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary rounded-0" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger rounded-0 px-4" id="btn-save-product">Guardar Cambios</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-0"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger rounded-0 px-4" id="btn-save-product">Guardar
+                        Cambios</button>
                 </div>
             </div>
         </div>
@@ -229,10 +287,10 @@
 
     <!-- Firebase SDK (Modular) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <script type="module" src="js/app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
-
-

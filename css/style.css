@@ -1,4 +1,4 @@
-﻿:root {
+:root {
     --primary-color: #dc3545; /* Red */
     --primary-hover: #c82333;
     --secondary-color: #f4f5f7;
@@ -191,6 +191,16 @@ body {
 }
 
 /* Auth Loading State to prevent Flash of Unstyled Content (FOUC) */
+html {
+    background-color: var(--bg-color);
+}
+html:has(body.login-page) {
+    background-color: var(--surface-dark);
+}
+html[data-bs-theme="dark"] {
+    background-color: #212529 !important;
+}
+
 body.loading-auth {
     opacity: 0;
     pointer-events: none;
@@ -536,8 +546,7 @@ body.login-page {
         text-align: left;
         font-weight: 600;
         font-size: 0.85rem;
-        color: var(--text-color);
-        opacity: 0.8;
+        color: var(--bs-secondary-color);
         display: flex;
         align-items: center;
         height: 100%;

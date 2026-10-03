@@ -1,4 +1,4 @@
-﻿import { supabase } from '../supabase-config.js';
+import { supabase } from '../supabase-config.js';
 
 
 const kpiIngresosHoy = document.getElementById('kpi-ingresos-hoy');
@@ -51,26 +51,32 @@ async function loadInitialData() {
         if (prodErr) throw prodErr;
         allProducts = prods || [];
 
-        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*, sale_items(*)').order('date', { ascending: false });
+        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*').order('date', { ascending: false });
         if (salesErr) throw salesErr;
+
+        const { data: saleItemsData, error: itemsErr } = await supabase.from('sale_items').select('*');
+        if (itemsErr) throw itemsErr;
         
-        allSales = salesData.map(s => ({
-            id: s.id,
-            client: s.client,
-            seller: s.seller_name,
-            date: s.date,
-            total: s.total,
-            paymentMethod: s.payment_method,
-            amountPaid: s.amount_paid,
-            change: s.change,
-            items: s.sale_items.map(si => ({
-                productId: si.product_id,
-                codigo: si.codigo,
-                descripcion: si.descripcion,
-                qty: si.qty,
-                price: si.price
-            }))
-        }));
+        allSales = salesData.map(s => {
+            const itemsForSale = saleItemsData.filter(si => si.sale_id === s.id);
+            return {
+                id: s.id,
+                client: s.client,
+                seller: s.seller_name,
+                date: s.date,
+                total: s.total,
+                paymentMethod: s.payment_method,
+                amountPaid: s.amount_paid,
+                change: s.change,
+                items: itemsForSale.map(si => ({
+                    productId: si.product_id,
+                    codigo: si.codigo,
+                    descripcion: si.descripcion,
+                    qty: si.qty,
+                    price: si.price
+                }))
+            };
+        });
     } catch (e) {
         console.error("Error loading initial data", e);
     }
@@ -177,7 +183,7 @@ function processAndRender() {
                 descripcion: item.descripcion,
                 marca: prod ? prod.marca : '',
                 stockActual: prod ? prod.stock : 0,
-                metodoPago: sale.paymentMethod || 'Efectivo',
+                metodoPago: (sale.paymentMethod || 'Efectivo').split('|')[0],
                 qty: item.qty,
                 price: item.price,
                 totalItem: subtotal,
@@ -186,11 +192,9 @@ function processAndRender() {
         });
 
         if (saleHasMatchingItems) {
-            // KPIs (Hoy)
-            if (sale.date >= todayISO) {
-                ingresosHoy += saleTotalFiltered;
-                ventasHoySet.add(sale.id);
-            }
+            // Add to total filtered KPIs
+            ingresosHoy += saleTotalFiltered;
+            ventasHoySet.add(sale.id);
 
             // Chart Data (Last 7 Days)
             if (last7Days[dateStr] !== undefined) {
@@ -228,7 +232,7 @@ function renderSalesChart(last7Days) {
         data: {
             labels: Object.keys(last7Days),
             datasets: [{
-                label: 'Ingresos por DÃ­a (Bs)',
+                label: 'Ingresos por Día (Bs)',
                 data: Object.values(last7Days),
                 borderColor: '#dc3545',
                 backgroundColor: 'rgba(220, 53, 69, 0.08)',
@@ -277,7 +281,7 @@ function renderTopProductsChart(productFreq) {
     if (topProductsChartInstance) topProductsChartInstance.destroy();
 
     const sorted = Object.keys(productFreq).sort((a, b) => productFreq[b].qty - productFreq[a].qty).slice(0, 5);
-    const labels = sorted.map(k => k);
+    const labels = sorted.map(k => productFreq[k].desc || k);
     const data = sorted.map(k => productFreq[k].qty);
 
     topProductsChartInstance = new Chart(ctx, {
@@ -355,9 +359,9 @@ function exportToExcel() {
         const aoa = [
             ["REPUESTOS HAMILTON"],
             ["REPORTE DE VENTAS (DASHBOARD)"],
-            ["Fecha de ExportaciÃ³n:", dateStr],
+            ["Fecha de Exportación:", dateStr],
             [],
-            ["Fecha TransacciÃ³n", "Cliente", "MÃ©todo Pago", "CÃ³digo", "DescripciÃ³n", "Marca", "Cant. Vendida", "Precio Unitario (Bs)", "Total (Bs)", "Stock Actual"]
+            ["Fecha Transacción", "Cliente", "Método Pago", "Código", "Descripción", "Marca", "Cant. Vendida", "Precio Unitario (Bs)", "Total (Bs)", "Stock Actual"]
         ];
         
         let totalGeneral = 0;

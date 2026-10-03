@@ -41,8 +41,8 @@ async function loadUsers() {
             
             tr.innerHTML = `
                 <td class="fw-bold">${fullName}</td>
-                <td>${ci}</td>
-                <td class="text-muted">${data.email}</td>
+                <td class="font-monospace">${ci}</td>
+                <td class="text-muted font-monospace">${data.email}</td>
                 <td><span class="badge ${data.role === 'Admin' ? 'bg-primary' : 'bg-secondary'}">${data.role}</span></td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-outline-primary btn-edit-user me-1" data-id="${id}" data-user='${JSON.stringify(data).replace(/'/g, "&apos;")}'>
@@ -58,7 +58,10 @@ async function loadUsers() {
     }
 }
 
+let isUsersSetup = false;
 function setupUsers() {
+    if (isUsersSetup) return;
+    isUsersSetup = true;
     btnSaveUser.addEventListener('click', async () => {
         const id = document.getElementById('user-id').value;
         const nombre = document.getElementById('user-nombre').value;
@@ -76,6 +79,10 @@ function setupUsers() {
             btnSaveUser.disabled = true;
             btnSaveUser.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
+            const modalEl = document.getElementById('userModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
             if (id) {
                 // Update
                 const { error } = await supabase.from('users').update({
@@ -84,13 +91,36 @@ function setupUsers() {
                 if (error) throw error;
                 Swal.fire('Éxito', 'Usuario actualizado', 'success');
             } else {
-                // Not supported from client without Edge function since we need to create auth user
-                Swal.fire('Atención', 'Para crear nuevos usuarios, debes crearlos primero en la consola de Supabase Auth.', 'warning');
+                const password = document.getElementById('user-password').value;
+                if (!password || password.length < 6) {
+                    Swal.fire('Error', 'La contraseña para un usuario nuevo debe tener al menos 6 caracteres.', 'error');
+                    btnSaveUser.disabled = false;
+                    btnSaveUser.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Usuario';
+                    return;
+                }
+                
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email, password
+                });
+                if (authError) throw authError;
+
+                const newUserId = authData.user ? authData.user.id : null;
+                
+                if (newUserId) {
+                    const { error: insertErr } = await supabase.from('users').insert([{
+                        id: newUserId,
+                        nombre, apellido, ci, email, role
+                    }]);
+                    
+                    if (insertErr) {
+                        // En caso de que haya un trigger que lo cree automático, lo actualizamos
+                        await supabase.from('users').update({nombre, apellido, ci, role}).eq('id', newUserId);
+                    }
+                }
+                
+                Swal.fire('Éxito', 'Usuario creado correctamente.', 'success');
             }
-            
-            const modalEl = document.getElementById('userModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) modal.hide();
+
             userForm.reset();
             document.getElementById('user-id').value = '';
             
@@ -114,7 +144,7 @@ function setupUsers() {
             document.getElementById('user-email').value = data.email || '';
             document.getElementById('user-role').value = data.role || 'Empleado';
             
-            const modal = new bootstrap.Modal(document.getElementById('userModal'));
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('userModal'));
             modal.show();
         }
         

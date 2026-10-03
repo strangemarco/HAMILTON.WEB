@@ -1,4 +1,4 @@
-﻿import { supabase } from '../supabase-config.js';
+import { supabase } from '../supabase-config.js';
 
 import { showLoading, hideLoading } from './ui.js';
 import { logAction } from './logger.js';
@@ -12,9 +12,194 @@ export let filteredProducts = [];
 let currentPage = 1;
 const rowsPerPage = 10;
 
+
+    // --- IMPORT LOGIC ---
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('excel-file-input');
+
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.replace('bg-light', 'bg-white');
+            dropZone.classList.replace('border-dashed', 'border-primary');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.replace('bg-white', 'bg-light');
+            dropZone.classList.replace('border-primary', 'border-dashed');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.replace('bg-white', 'bg-light');
+            dropZone.classList.replace('border-primary', 'border-dashed');
+            if (e.dataTransfer.files.length) {
+                handleExcelFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleExcelFile(e.target.files[0]);
+            }
+            fileInput.value = ''; // Reset
+        });
+    }
+
+    async function handleExcelFile(file) {
+        if (!file.name.match(/\.(xlsx|xls)$/i)) {
+            return Swal.fire('Error', 'Por favor sube un archivo Excel v�lido.', 'error');
+        }
+
+        dropZone.innerHTML = '<div class="spinner-border text-primary my-3"></div><p>Procesando Excel...</p>';
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                if (jsonData.length === 0) {
+                    throw new Error("El archivo est� vac�o.");
+                }
+
+                // Normalizar keys
+                // Parse as array of arrays to find the real header row
+                const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                if (rawData.length === 0) throw new Error("El archivo está vacío.");
+
+                let headerRowIndex = -1;
+                let headerMap = {}; // Maps our internal key to the column index
+
+                // Find the header row by looking for 'cod' and 'desc'
+                for (let i = 0; i < rawData.length && i < 20; i++) {
+                    const row = rawData[i];
+                    if (!row || !Array.isArray(row)) continue;
+                    
+                    let foundCod = -1, foundDesc = -1;
+                    
+                    row.forEach((col, idx) => {
+                        if (typeof col !== 'string') return;
+                        const lower = col.toLowerCase();
+                        if (lower.includes('cod') || lower.includes('código') || lower.includes('cdigo')) foundCod = idx;
+                        if (lower.includes('desc')) foundDesc = idx;
+                    });
+
+                    if (foundCod !== -1 && foundDesc !== -1) {
+                        headerRowIndex = i;
+                        // Map all columns
+                        row.forEach((col, idx) => {
+                            if (typeof col !== 'string') return;
+                            const lower = col.toLowerCase();
+                            if (lower.includes('cod') || lower.includes('código') || lower.includes('cdigo')) {
+                                if (lower.includes('sust') || lower.includes('sus')) {
+                                    headerMap.sust = idx;
+                                } else {
+                                    headerMap.codigo = idx;
+                                }
+                            }
+                            if (lower.includes('desc')) headerMap.descripcion = idx;
+                            if (lower.includes('marca')) headerMap.marca = idx;
+                            if (lower.includes('p1') || lower.includes('compra')) headerMap.p1 = idx;
+                            if (lower.includes('p2') || lower.includes('limite') || lower.includes('límite')) headerMap.p2 = idx;
+                            if (lower.includes('p3') || lower.includes('venta')) headerMap.p3 = idx;
+                            if (lower.includes('stock') || lower.includes('cant') || lower.includes('actual')) headerMap.stock = idx;
+                        });
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1) {
+                    throw new Error("No se pudo encontrar la fila de encabezados. Asegúrate de que existan columnas como 'Código' y 'Descripción'.");
+                }
+
+                let toInsert = [];
+                for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+                    const row = rawData[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    const val = (key) => row[headerMap[key]] !== undefined ? String(row[headerMap[key]]).trim() : '';
+                    
+                    const codigo = val('codigo');
+                    if (!codigo || codigo === '') continue; // Ignorar filas vacías
+
+                    // Parse numbers, cleaning "Bs " or currency symbols
+                    const parseMoney = (str) => {
+                        const clean = str.replace(/[^0-9.,-]/g, '').replace(',', '.');
+                        return parseFloat(clean) || 0;
+                    };
+
+                    toInsert.push({
+                        codigo: codigo,
+                        sust: val('sust'),
+                        descripcion: val('descripcion'),
+                        marca: val('marca'),
+                        p1: parseMoney(val('p1')),
+                        p2: parseMoney(val('p2')),
+                        p3: parseMoney(val('p3')),
+                        stock: parseInt(val('stock')) || 0
+                    });
+                }
+
+                // Deduplicar dentro del mismo excel (quedarse con el último)
+                const uniqueProductsMap = new Map();
+                for (const p of toInsert) {
+                    uniqueProductsMap.set(p.codigo, p);
+                }
+                const uniqueProducts = Array.from(uniqueProductsMap.values());
+
+                // Batch Insert/Upsert to Supabase
+                dropZone.innerHTML = '<div class="spinner-border text-success my-3"></div><p>Guardando en la base de datos...</p>';
+                
+                const batchSize = 500;
+                for (let i = 0; i < uniqueProducts.length; i += batchSize) {
+                    const batch = uniqueProducts.slice(i, i + batchSize);
+                    const { error } = await supabase.from('products').upsert(batch, { onConflict: 'codigo' });
+                    if (error) throw error;
+                }
+
+                await logAction("Importar Excel", "Inventario", `Se procesaron ${uniqueProducts.length} productos`);
+                
+                const modalEl = document.getElementById('importModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+
+                Swal.fire('¡Éxito!', `Se procesaron e importaron ${uniqueProducts.length} productos correctamente.`, 'success');
+                await loadProducts();
+            } catch (err) {
+                Swal.fire('Error al procesar', err.message, 'error');
+            } finally {
+                // Restore dropzone
+                dropZone.innerHTML = `
+                    <i class="bi bi-file-earmark-spreadsheet fs-1 text-success mb-3"></i>
+                    <p class="mb-1 fw-bold">Arrastra tu Excel aqu�</p>
+                    <p class="text-muted small">o haz clic para buscar</p>
+                    <input type="file" id="excel-file-input" class="d-none" accept=".xlsx, .xls">
+                `;
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+
 export async function initInventory() {
     if (!inventoryTableBody) return; // Only run on inventory.html
     setupInventory();
+    
+    // Auto-fill search if coming from notifications
+    const params = new URLSearchParams(window.location.search);
+    const searchVal = params.get('search');
+    if (searchVal) {
+        const searchInput = document.getElementById('inv-filter-search');
+        if (searchInput) searchInput.value = searchVal;
+    }
+    
     await loadProducts();
 }
 
@@ -40,20 +225,32 @@ export async function loadProducts() {
 
 
 function populateInventoryFilters() {
-    const filterBrand = document.getElementById('inv-filter-brand');
-    if (!filterBrand) return;
+    const filterBrandList = document.getElementById('inv-filter-brand-list');
+    if (!filterBrandList) return;
 
     const brands = new Set();
     currentProducts.forEach(p => {
         if (p.marca) brands.add(p.marca);
     });
 
-    filterBrand.innerHTML = '<option value="">Todas las marcas</option>';
+    filterBrandList.innerHTML = '<li><a class="dropdown-item brand-item" href="#" data-value="">Todas las marcas</a></li>';
     brands.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b;
-        opt.textContent = b;
-        filterBrand.appendChild(opt);
+        const li = document.createElement('li');
+        li.innerHTML = `<a class="dropdown-item brand-item" href="#" data-value="${b}">${b}</a>`;
+        filterBrandList.appendChild(li);
+    });
+
+    document.querySelectorAll('.brand-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const val = e.target.dataset.value;
+            const text = e.target.textContent;
+            document.getElementById('inv-filter-brand').value = val;
+            document.getElementById('brand-dropdown-btn').textContent = text;
+            
+            const event = new Event('change');
+            document.getElementById('inv-filter-brand').dispatchEvent(event);
+        });
     });
 }
 
@@ -89,6 +286,9 @@ function renderInventoryPage(page) {
     inventoryTableBody.innerHTML = '';
     paginatedItems.forEach(p => {
         const tr = document.createElement('tr');
+        if (p.estado === 'baja') {
+            tr.classList.add('table-active');
+        }
         
         let actionButtons = '';
         if (p.estado === 'baja') {
@@ -103,7 +303,7 @@ function renderInventoryPage(page) {
         }
         
         tr.innerHTML = `
-            <td class="fw-bold ${p.estado === 'baja' ? 'text-decoration-line-through text-muted' : ''}">${p.codigo}</td>
+            <th scope="row" class="font-monospace ${p.estado === 'baja' ? 'text-decoration-line-through text-muted' : ''}">${p.codigo}</th>
             <td class="${p.estado === 'baja' ? 'text-muted' : ''}">${p.sust || '-'}</td>
             <td>
                 <div class="${p.estado === 'baja' ? 'text-muted' : ''}">${p.descripcion}</div>
@@ -156,7 +356,10 @@ function renderPagination() {
     paginationContainer.innerHTML = html;
 }
 
-export function setupInventory() {
+export let issetupInventoryDone = false;
+function setupInventory() {
+    if (issetupInventoryDone) return;
+    issetupInventoryDone = true;
     const paginationContainer = document.getElementById('inventory-pagination');
     if (paginationContainer) {
         paginationContainer.addEventListener('click', (e) => {
@@ -225,7 +428,7 @@ export function setupInventory() {
             
             // Reload
             await loadProducts();
-            Swal.fire('Ãƒâ€šÃ‚Â¡Éxito!', 'Producto guardado correctamente', 'success');
+            Swal.fire('¡Éxito!', 'Producto guardado correctamente', 'success');
         } catch (e) {
             Swal.fire('Error', 'Error al guardar: ' + e.message, 'error');
         } finally {
@@ -281,22 +484,18 @@ export function setupInventory() {
                 },
                 inputValidator: (value) => {
                     if (!value || value.trim() === '') {
-                        return 'Ãƒâ€šÃ‚Â¡Necesitas escribir un motivo!'
+                        return '¡Necesitas escribir un motivo!'
                     }
                 }
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     try {
                         
-                        await updateDoc(prodRef, {
-                            estado: 'baja',
-                            motivoBaja: result.value.trim(),
-                            fechaBaja: new Date().toISOString()
-                        });
+                        const { error } = await supabase.from('products').update({ estado: 'baja', motivoBaja: result.value.trim(), fechaBaja: new Date().toISOString() }).eq('id', id); if(error) throw error;
                         await logAction("Dar de baja", "Inventario", `Dio de baja el producto con motivo: ${result.value.trim()}`);
                         await loadProducts();
                         Swal.fire({
-                            title: 'Ãƒâ€šÃ‚Â¡Dado de baja!',
+                            title: '¡Dado de baja!',
                             text: 'El repuesto ya no aparecerá en el inventario activo.',
                             icon: 'success',
                             customClass: {
@@ -314,7 +513,7 @@ export function setupInventory() {
         if (btnRestore) {
             const id = btnRestore.dataset.id;
             Swal.fire({
-                title: 'Ãƒâ€šÃ‚Â¿Restaurar Producto?',
+                title: '¿Restaurar Producto?',
                 text: "Este producto volverá a estar activo y disponible para ventas.",
                 icon: 'question',
                 showCancelButton: true,
@@ -331,13 +530,11 @@ export function setupInventory() {
                 if (result.isConfirmed) {
                     try {
                         
-                        await updateDoc(prodRef, {
-                            estado: 'activo'
-                        });
+                        const { error } = await supabase.from('products').update({ estado: 'activos', motivoBaja: null, fechaBaja: null }).eq('id', id); if(error) throw error;
                         await logAction("Restaurar Producto", "Inventario", `Restauró el producto con ID ${id}`);
                         await loadProducts();
                         Swal.fire({
-                            title: 'Ãƒâ€šÃ‚Â¡Restaurado!',
+                            title: '¡Restaurado!',
                             text: 'El producto vuelve a estar activo.',
                             icon: 'success',
                             customClass: {

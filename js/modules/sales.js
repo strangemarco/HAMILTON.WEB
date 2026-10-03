@@ -21,6 +21,10 @@ const cashPaymentSection = document.getElementById('cash-payment-section');
 const saleAmountPaid = document.getElementById('sale-amount-paid');
 const saleChange = document.getElementById('sale-change');
 const saleIdInput = document.getElementById('sale-id');
+const payMixedRadio = document.getElementById('pay-mixed');
+const mixedPaymentSection = document.getElementById('mixed-payment-section');
+const saleMixedCash = document.getElementById('sale-mixed-cash');
+const saleMixedQr = document.getElementById('sale-mixed-qr');
 
 let currentCart = [];
 let editingOldSale = null;
@@ -29,10 +33,14 @@ let currentSales = [];
 let filteredSales = [];
 let salesCurrentPage = 1;
 const salesRowsPerPage = 10;
+let isSalesSetup = false;
 
 export async function initSalesView() {
     if (!salesTableBody) return; // Only run on sales.html
-    setupSales();
+    if (!isSalesSetup) {
+        setupSales();
+        isSalesSetup = true;
+    }
 
     // Populate product datalist for the modal
     saleProductDatalist.innerHTML = '';
@@ -55,7 +63,10 @@ export async function initSalesView() {
     await loadSales();
 }
 
+let issetupSalesDone = false;
 function setupSales() {
+    if (issetupSalesDone) return;
+    issetupSalesDone = true;
     const filterStart = document.getElementById('sales-filter-start');
     const filterEnd = document.getElementById('sales-filter-end');
     const btnExport = document.getElementById('btn-export-sales');
@@ -77,17 +88,33 @@ function setupSales() {
     }
 
     // Toggle Payment Method Section
-    if (payCashRadio && payQrRadio && cashPaymentSection) {
+    if (payCashRadio && payQrRadio && payMixedRadio) {
         payCashRadio.addEventListener('change', () => {
             if (payCashRadio.checked) {
                 cashPaymentSection.classList.remove('d-none');
+                mixedPaymentSection.classList.add('d-none');
             }
         });
         payQrRadio.addEventListener('change', () => {
             if (payQrRadio.checked) {
                 cashPaymentSection.classList.add('d-none');
+                mixedPaymentSection.classList.add('d-none');
                 saleAmountPaid.value = '';
-                saleChange.textContent = '0.00';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
+            saleChange.textContent = '0.00';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
+            }
+        });
+        payMixedRadio.addEventListener('change', () => {
+            if (payMixedRadio.checked) {
+                cashPaymentSection.classList.add('d-none');
+                mixedPaymentSection.classList.remove('d-none');
             }
         });
     }
@@ -182,6 +209,10 @@ function setupSales() {
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
             const amountPaid = parseFloat(saleAmountPaid.value);
             
+            let finalPaymentMethodStr = paymentMethod;
+            let finalAmountPaid = total;
+            let finalChange = 0;
+
             if (paymentMethod === 'Efectivo') {
                 if (isNaN(amountPaid) || amountPaid < total) {
                     Swal.fire('Atención', 'El monto pagado debe ser mayor o igual al total de la venta.', 'warning');
@@ -189,6 +220,22 @@ function setupSales() {
                     btnConfirmSale.innerHTML = originalText;
                     return;
                 }
+                finalAmountPaid = amountPaid;
+                finalChange = amountPaid - total;
+            } else if (paymentMethod === 'Mixto') {
+                const mCash = parseFloat(saleMixedCash.value) || 0;
+                const mQr = parseFloat(saleMixedQr.value) || 0;
+                if (mCash + mQr < total) {
+                    Swal.fire('Atención', 'La suma de Efectivo y QR debe cubrir el total de la venta.', 'warning');
+                    btnConfirmSale.disabled = false;
+                    btnConfirmSale.innerHTML = originalText;
+                    return;
+                }
+                finalAmountPaid = mCash + mQr;
+                finalChange = finalAmountPaid - total;
+                // mCash is how much cash they gave.
+                const effectiveCash = mCash - finalChange;
+                finalPaymentMethodStr = `Mixto|${effectiveCash}|${mQr}`;
             }
             
             const loggedUser = JSON.parse(localStorage.getItem('hamilton_user') || '{}');
@@ -201,9 +248,9 @@ function setupSales() {
                 seller: sellerName,
                 date: new Date().toISOString(),
                 total: total,
-                paymentMethod: paymentMethod,
-                amountPaid: paymentMethod === 'Efectivo' ? amountPaid : total,
-                change: paymentMethod === 'Efectivo' ? (amountPaid - total) : 0,
+                paymentMethod: finalPaymentMethodStr,
+                amountPaid: finalAmountPaid,
+                change: finalChange,
                 items: currentCart.map(item => ({
                     productId: item.product.id,
                     codigo: item.product.codigo,
@@ -218,47 +265,82 @@ function setupSales() {
                 // 1. Revert old stock
                 if (editingOldSale) {
                     for (const oldItem of editingOldSale.items) {
-                        // find the product currently in DB to restore stock
-                        const prodRef = doc(db, "products", oldItem.productId);
-                        // We do a fresh fetch to safely restore stock
-                        // But for simplicity, we assume the availableProducts has close enough data
-                        // or we fetch it
-                        const pDoc = await getDocs(query(collection(db, "products")));
-                        let currentDbStock = 0;
-                        pDoc.forEach(d => {
-                            if(d.id === oldItem.productId) currentDbStock = d.data().stock;
-                        });
-                        await updateDoc(prodRef, { stock: currentDbStock + oldItem.qty });
+                        const { data: pData } = await supabase.from('products').select('stock').eq('id', oldItem.productId).single();
+                        if (pData) {
+                            await supabase.from('products').update({ stock: pData.stock + oldItem.qty }).eq('id', oldItem.productId);
+                        }
                     }
                 }
                 
                 // 2. Deduct new stock
                 for (const item of currentCart) {
-                    const prodRef = doc(db, "products", item.product.id);
-                    const pDoc = await getDocs(query(collection(db, "products")));
-                    let currentDbStock = 0;
-                    pDoc.forEach(d => {
-                        if(d.id === item.product.id) currentDbStock = d.data().stock;
-                    });
-                    const newStock = currentDbStock - item.qty;
-                    await updateDoc(prodRef, { stock: newStock });
+                    const { data: pData } = await supabase.from('products').select('stock').eq('id', item.product.id).single();
+                    if (pData) {
+                        await supabase.from('products').update({ stock: pData.stock - item.qty }).eq('id', item.product.id);
+                    }
                 }
 
                 // 3. Update Sale Doc
-                sale.date = editingOldSale.date; // Keep original date or update it? Keep original.
-                const saleRef = doc(db, "sales", saleIdInput.value);
-                await updateDoc(saleRef, sale);
+                sale.date = editingOldSale.date;
+                const salePayload = {
+                    client: sale.client,
+                    seller_name: sale.seller,
+                    date: sale.date,
+                    total: sale.total,
+                    payment_method: sale.paymentMethod,
+                    amount_paid: sale.amountPaid,
+                    change: sale.change
+                };
+                const { error: saleErr } = await supabase.from('sales').update(salePayload).eq('id', saleIdInput.value);
+                if (saleErr) throw saleErr;
+                
+                // 4. Update items (delete old, insert new)
+                await supabase.from('sale_items').delete().eq('sale_id', saleIdInput.value);
+                const saleItems = currentCart.map(item => ({
+                    sale_id: saleIdInput.value,
+                    product_id: item.product.id,
+                    codigo: item.product.codigo,
+                    descripcion: item.product.descripcion,
+                    qty: item.qty,
+                    price: item.price
+                }));
+                await supabase.from('sale_items').insert(saleItems);
+
                 await logAction("Editar Venta", "Ventas", `Editó la venta del cliente ${sale.client} con ID ${saleIdInput.value}`);
             } else {
                 // New sale
-                const docRef = await addDoc(collection(db, "sales"), sale);
+                const salePayload = {
+                    client: sale.client,
+                    seller_name: sale.seller,
+                    date: sale.date,
+                    total: sale.total,
+                    payment_method: sale.paymentMethod,
+                    amount_paid: sale.amountPaid,
+                    change: sale.change
+                };
+                const { data: newSale, error: saleErr } = await supabase.from('sales').insert([salePayload]).select().single();
+                if (saleErr) throw saleErr;
+
+                // Insert items
+                const saleItems = currentCart.map(item => ({
+                    sale_id: newSale.id,
+                    product_id: item.product.id,
+                    codigo: item.product.codigo,
+                    descripcion: item.product.descripcion,
+                    qty: item.qty,
+                    price: item.price
+                }));
+                const { error: itemErr } = await supabase.from('sale_items').insert(saleItems);
+                if (itemErr) throw itemErr;
+
                 await logAction("Registrar Venta", "Ventas", `Registró una nueva venta por Bs${sale.total.toFixed(2)} para ${sale.client}`);
 
                 // 2. Deduct Stock from Products
                 for (const item of currentCart) {
-                    const prodRef = doc(db, "products", item.product.id);
-                    const newStock = item.product.stock - item.qty;
-                    await updateDoc(prodRef, { stock: newStock });
+                    const { data: pData } = await supabase.from('products').select('stock').eq('id', item.product.id).single();
+                    if (pData) {
+                        await supabase.from('products').update({ stock: pData.stock - item.qty }).eq('id', item.product.id);
+                    }
                 }
             }
 
@@ -273,15 +355,18 @@ function setupSales() {
             saleIdInput.value = '';
             saleClient.value = '';
             saleAmountPaid.value = '';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
             saleChange.textContent = '0.00';
             if (payCashRadio) payCashRadio.checked = true;
             if (cashPaymentSection) cashPaymentSection.classList.remove('d-none');
+            if (mixedPaymentSection) mixedPaymentSection.classList.add('d-none');
             updateCartUI();
             
             // Refresh tables
             await initSalesView(); // Reload sales view to update product stock and list
             
-            Swal.fire('Â¡Venta Exitosa!', 'Venta registrada con éxito.', 'success').then(() => {
+            Swal.fire('¡Venta Exitosa!', 'Venta registrada con éxito.', 'success').then(() => {
                 // Auto-print after closing the success modal
                 printSale(sale);
             });
@@ -332,6 +417,8 @@ function setupSales() {
                     payQrRadio.checked = true;
                     cashPaymentSection.classList.add('d-none');
                     saleAmountPaid.value = '';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
                     saleChange.textContent = '0.00';
                 } else {
                     payCashRadio.checked = true;
@@ -349,7 +436,7 @@ function setupSales() {
                 
                 updateCartUI();
                 
-                const modal = new bootstrap.Modal(document.getElementById('saleModal'));
+                const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('saleModal'));
                 modal.show();
                 
             } catch(err) {
@@ -365,6 +452,8 @@ function setupSales() {
         currentCart = [];
         saleClient.value = '';
         saleAmountPaid.value = '';
+            if (saleMixedCash) saleMixedCash.value = '';
+            if (saleMixedQr) saleMixedQr.value = '';
         saleChange.textContent = '0.00';
         payCashRadio.checked = true;
         cashPaymentSection.classList.remove('d-none');
@@ -399,7 +488,7 @@ function printSale(sale) {
             <style>
                 body { 
                     font-family: 'Inter', 'Segoe UI', sans-serif; 
-                    padding: 40px; 
+                    padding: 15px; 
                     color: #000; 
                     line-height: 1.5;
                     max-width: 800px;
@@ -411,7 +500,7 @@ function printSale(sale) {
                     align-items: flex-end;
                     border-bottom: 4px solid #000;
                     padding-bottom: 15px;
-                    margin-bottom: 30px;
+                    margin-bottom: 20px;
                 }
                 .logo-area h1 { 
                     margin: 0; 
@@ -446,11 +535,11 @@ function printSale(sale) {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
                     gap: 15px 30px;
-                    margin-bottom: 40px;
+                    margin-bottom: 20px;
                     font-size: 14px;
                     line-height: 1.4;
                     background-color: #f8f9fa;
-                    padding: 20px;
+                    padding: 15px;
                     border-radius: 4px;
                 }
                 .details-list > div {
@@ -471,7 +560,7 @@ function printSale(sale) {
                 table { 
                     width: 100%; 
                     border-collapse: collapse; 
-                    margin-bottom: 30px; 
+                    margin-bottom: 20px; 
                 }
                 th { 
                     text-align: left; 
@@ -491,7 +580,7 @@ function printSale(sale) {
                 .totals-box {
                     width: 350px;
                     background-color: #f8f9fa;
-                    padding: 20px;
+                    padding: 15px;
                     border-radius: 4px;
                 }
                 .total-row {
@@ -510,15 +599,16 @@ function printSale(sale) {
                     color: #dc3545;
                 }
                 .footer {
-                    margin-top: 50px;
+                    margin-top: 30px;
                     text-align: center;
                     font-size: 12px;
                     color: #555;
                     border-top: 1px solid #eee;
-                    padding-top: 20px;
+                    padding-top: 15px;
                 }
                 @media print {
-                    body { padding: 0; }
+                    @page { margin: 0; }
+                    body { padding: 0.5cm; }
                 }
             </style>
         </head>
@@ -558,17 +648,27 @@ function printSale(sale) {
                 <div class="totals-box">
                     <div class="total-row">
                         <span>Método de Pago:</span>
-                        <strong>${sale.paymentMethod || 'Efectivo'}</strong>
+                        <strong>${(sale.paymentMethod || 'Efectivo').split('|')[0]}</strong>
                     </div>
                     ${(sale.paymentMethod || 'Efectivo') === 'Efectivo' && sale.amountPaid ? `
-                    <div class="total-row">
-                        <span>Efectivo Recibido:</span>
-                        <span>Bs${sale.amountPaid.toFixed(2)}</span>
-                    </div>
-                    <div class="total-row">
-                        <span>Cambio:</span>
-                        <span>Bs${sale.change.toFixed(2)}</span>
-                    </div>
+                        <div class="total-row" style="color: #6c757d; font-size: 12px; margin-top: 5px;">
+                            <span>Efectivo Recibido:</span>
+                            <span>Bs${parseFloat(sale.amountPaid).toFixed(2)}</span>
+                        </div>
+                        <div class="total-row" style="color: #6c757d; font-size: 12px;">
+                            <span>Cambio:</span>
+                            <span>Bs${parseFloat(sale.change).toFixed(2)}</span>
+                        </div>
+                    ` : ''}
+                    ${(sale.paymentMethod || '').startsWith('Mixto') ? `
+                        <div class="total-row" style="color: #6c757d; font-size: 12px; margin-top: 5px;">
+                            <span>Mixto (Efectivo):</span>
+                            <span>Bs${parseFloat((sale.paymentMethod.split('|')[1] || 0)).toFixed(2)}</span>
+                        </div>
+                        <div class="total-row" style="color: #6c757d; font-size: 12px;">
+                            <span>Mixto (QR):</span>
+                            <span>Bs${parseFloat((sale.paymentMethod.split('|')[2] || 0)).toFixed(2)}</span>
+                        </div>
                     ` : ''}
                     <div class="total-row grand-total">
                         <span>TOTAL</span>
@@ -636,26 +736,32 @@ function updateCartUI() {
 async function loadSales() {
     salesTableBody.innerHTML = '<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary my-3"></div></td></tr>';
     try {
-        const { data, error } = await supabase.from('sales').select('*, sale_items(*)').order('date', { ascending: false });
-        if (error) throw error;
+        const { data: salesData, error: salesErr } = await supabase.from('sales').select('*').order('date', { ascending: false });
+        if (salesErr) throw salesErr;
+
+        const { data: saleItemsData, error: itemsErr } = await supabase.from('sale_items').select('*');
+        if (itemsErr) throw itemsErr;
         
-        currentSales = data.map(s => ({
-            id: s.id,
-            client: s.client,
-            seller: s.seller_name,
-            date: s.date,
-            total: s.total,
-            paymentMethod: s.payment_method,
-            amountPaid: s.amount_paid,
-            change: s.change,
-            items: s.sale_items.map(si => ({
-                productId: si.product_id,
-                codigo: si.codigo,
-                descripcion: si.descripcion,
-                qty: si.qty,
-                price: si.price
-            }))
-        }));
+        currentSales = salesData.map(s => {
+            const itemsForSale = saleItemsData.filter(si => si.sale_id === s.id);
+            return {
+                id: s.id,
+                client: s.client,
+                seller: s.seller_name,
+                date: s.date,
+                total: s.total,
+                paymentMethod: s.payment_method,
+                amountPaid: s.amount_paid,
+                change: s.change,
+                items: itemsForSale.map(si => ({
+                    productId: si.product_id,
+                    codigo: si.codigo,
+                    descripcion: si.descripcion,
+                    qty: si.qty,
+                    price: si.price
+                }))
+            };
+        });
         
         applySalesFilters();
     } catch (e) {

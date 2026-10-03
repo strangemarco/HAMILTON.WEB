@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const dir = 'js/modules';
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.js'));
-const replacements = {'Ã¡':'á','Ã©':'é','Ã­':'í','Ã³':'ó','Ãº':'ú','Ã ':'Á','Ã‰':'É','Ã ':'Í','Ã“':'Ó','Ãš':'Ú','Ã±':'ñ','Ã‘':'Ñ'};
+const replacements = {'á':'á','é':'é','í':'í','ó':'ó','ú':'ú','Í':'Á','É':'É','Í':'Í','Ó':'Ó','Ú':'Ú','ñ':'ñ','Ñ':'Ñ'};
 files.forEach(f => {
     const p = path.join(dir, f);
     let c = fs.readFileSync(p, 'utf8');

@@ -1,4 +1,4 @@
-﻿import { supabase } from '../supabase-config.js';
+import { supabase } from '../supabase-config.js';
 
 
 const cajaDateInput = document.getElementById('caja-date');
@@ -46,8 +46,9 @@ async function loadCajaData() {
     try {
         // Since we don't have a direct index for date ranges, we fetch all sales and filter client-side.
         // For a large production app, we would query by date range.
-        const q = query(collection(db, "sales"), orderBy("date", "desc"));
-        const querySnapshot = await getDocs(q);
+        // Fetch all sales from Supabase
+        const { data: sales, error } = await supabase.from('sales').select('*').order('date', { ascending: false });
+        if (error) throw error;
         
         let countVentas = 0;
         let totalEfectivo = 0;
@@ -60,8 +61,7 @@ async function loadCajaData() {
 
         let found = false;
 
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
+        sales.forEach((data) => {
             const saleDateLocal = data.date.split('T')[0];
             
             if (saleDateLocal === selectedDate) {
@@ -71,7 +71,11 @@ async function loadCajaData() {
                 const saleTotal = data.total || 0;
                 totalGeneral += saleTotal;
                 
-                if (data.paymentMethod === 'Efectivo') {
+                const paymentMethod = data.payment_method || data.paymentMethod || 'Efectivo';
+                const seller = data.seller_name || data.seller || 'Desconocido';
+                const client = data.client || 'Público';
+
+                if (paymentMethod === 'Efectivo') {
                     totalEfectivo += saleTotal;
                 } else {
                     totalQr += saleTotal;
@@ -83,20 +87,20 @@ async function loadCajaData() {
 
                 currentCajaData.push([
                     timeStr,
-                    data.seller || 'Desconocido',
-                    data.client || 'PÃºblico',
-                    data.paymentMethod || 'Efectivo',
+                    seller,
+                    client,
+                    paymentMethod,
                     saleTotal
                 ]);
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${timeStr}</td>
-                    <td>${data.seller || 'Desconocido'}</td>
-                    <td>${data.client || 'PÃºblico'}</td>
+                    <td>${seller}</td>
+                    <td>${client}</td>
                     <td>
-                        <span class="badge ${data.paymentMethod === 'Efectivo' ? 'bg-success' : 'bg-info'}">
-                            ${data.paymentMethod || 'Efectivo'}
+                        <span class="badge ${paymentMethod === 'Efectivo' ? 'bg-success' : 'bg-info'}">
+                            ${paymentMethod}
                         </span>
                     </td>
                     <td class="text-end fw-bold">Bs ${saleTotal.toFixed(2)}</td>
@@ -126,7 +130,7 @@ async function loadCajaData() {
 
 function exportToExcel() {
     if (currentCajaData.length === 0) {
-        Swal.fire('AtenciÃ³n', 'No hay datos para exportar en esta fecha.', 'warning');
+        Swal.fire('Atención', 'No hay datos para exportar en esta fecha.', 'warning');
         return;
     }
     
@@ -139,7 +143,7 @@ function exportToExcel() {
             ["REPORTE DE CIERRE DE CAJA"],
             ["Fecha:", dateStr],
             [],
-            ["Hora", "Vendedor", "Cliente", "MÃ©todo de Pago", "Total (Bs)"]
+            ["Hora", "Vendedor", "Cliente", "Método de Pago", "Total (Bs)"]
         ];
         
         // Add all rows
